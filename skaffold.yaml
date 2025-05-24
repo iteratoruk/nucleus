@@ -1,0 +1,14 @@
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: nucleus
+manifests:
+  rawYaml:
+    - k8s/minikube.yaml
+build:
+  artifacts:
+    - image: iterator/nucleus
+      context: .
+      docker: {}
+  tagPolicy:
+    gitCommit: {}

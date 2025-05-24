@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+  <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <includeCallerData>true</includeCallerData>
+    </encoder>
+  </appender>
+
+  <root level="${LOGGING_LEVEL_ROOT:-ERROR}">
+    <appender-ref ref="JSON"/>
+  </root>
+</configuration>

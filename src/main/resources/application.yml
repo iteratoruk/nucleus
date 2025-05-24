@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: Nucleus
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,auditevents
+    access:
+      default: none
+  endpoint:
+    health:
+      access: read_only
+    auditevents:
+      access: read_only
+
+logging:
+  level:
+    ROOT: ERROR
+    iterator.nucleus: INFO
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: minikube
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+    access:
+      default: unrestricted
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: local
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+    access:
+      default: unrestricted

@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nucleus
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nucleus-config
+  namespace: nucleus
+data:
+  SPRING_PROFILES_ACTIVE: "minikube"
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nucleus-service
+  namespace: nucleus
+  labels:
+    app: nucleus-service
+spec:
+  selector:
+    matchLabels:
+      app: nucleus-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nucleus-service
+    spec:
+      containers:
+        - name: nucleus-service
+          image: iterator/nucleus:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: JAVA_OPTS
+              value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  key: SPRING_PROFILES_ACTIVE
+                  name: nucleus-config
+          livenessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+              httpHeaders:
+                - name: X-Client-ID
+                  value: k8s-readiness-probe
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+              httpHeaders:
+                - name: X-Client-ID
+                  value: k8s-readiness-probe
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nucleus-service
+  namespace: nucleus
+spec:
+  selector:
+    app: nucleus-service
+  ports:
+    - port: 8080
+      protocol: TCP
