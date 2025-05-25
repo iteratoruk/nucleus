@@ -19,8 +19,6 @@ test:
       command: [ "--tls=false" ]
   script:
     - ./gradlew build
-    - ./print-coverage
-  coverage: '/([]0-9{1,3}.[0-9]*).%.covered/'
   artifacts:
     when: always
     reports:
