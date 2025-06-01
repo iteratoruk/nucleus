@@ -19,6 +19,9 @@ test:
     - name: docker:28.2.2-dind
       command: [ "--host=tcp://0.0.0.0:2375", "--tls=false" ]
   before_script:
+    - echo "Configuring Testcontainers..."
+    - mkdir -p ~/.testcontainers/
+    - echo "docker.host = tcp://docker:2375" > ~/.testcontainers.properties
     - echo "Installing Docker client..."
     - apk add --no-cache docker-cli
     - echo "Waiting for Docker daemon to be ready..."
