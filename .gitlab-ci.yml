@@ -10,7 +10,6 @@ include:
 test:
   stage: test
   image: gradle:8.14-jdk21-alpine
-  privileged: true
   variables:
     FF_NETWORK_PER_BUILD: "true"
     DOCKER_HOST: "tcp://docker:2375"
