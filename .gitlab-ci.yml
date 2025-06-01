@@ -17,6 +17,19 @@ test:
   services:
     - name: docker:dind
       command: [ "--tls=false" ]
+  before_script:
+    - echo "Waiting for Docker daemon to be ready..."
+    - |
+      retry=0
+      while ! docker info >/dev/null 2>&1; do
+        if [ $retry -ge 30 ]; then
+          echo "Docker daemon did not start within 30 seconds."
+          exit 1
+        fi
+        retry=$((retry+1))
+        sleep 1
+      done
+    - echo "Docker daemon is ready."
   script:
     - ./gradlew build
   artifacts:

@@ -5,6 +5,7 @@ import iterator.nucleus.TestingFu.randomAlphabetic
 import iterator.nucleus.TestingFu.randomAlphanumeric
 import iterator.nucleus.TestingFu.randomEnum
 import iterator.nucleus.TestingFu.randomInstant
+import iterator.nucleus.truncatedToPostgresAccuracy
 import jakarta.persistence.EntityManager
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.params.ParameterizedTest
@@ -18,7 +19,7 @@ import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.stream.Stream
 
-val NOW: Instant = Instant.now()
+val NOW: Instant = Instant.now().truncatedToPostgresAccuracy()
 val AN_ACCOUNT_ID: String = UUID.randomUUID().toString()
 val ANOTHER_ACCOUNT_ID: String = UUID.randomUUID().toString()
 val AN_ACCOUNT_TEMPLATE_ID: String = randomAlphanumeric(16)
