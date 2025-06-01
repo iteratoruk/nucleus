@@ -17,7 +17,7 @@ test:
     DOCKER_DRIVER: overlay2
   services:
     - name: docker:dind
-      command: [ "--tls=false" ]
+      command: [ "--host=tcp://0.0.0.0:2375", "--tls=false" ]
   before_script:
     - echo "Installing Docker client..."
     - apk add --no-cache docker-cli
