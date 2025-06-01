@@ -45,6 +45,8 @@ val springCloudVersion = "2024.0.0"
 dependencies {
 	/* Spring Boot starters */
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
+  implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+  implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 
 	/* Compile-time dependencies */
@@ -52,24 +54,38 @@ dependencies {
 	implementation("com.fasterxml.jackson.core:jackson-core")
 	implementation("com.fasterxml.jackson.core:jackson-databind")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+  implementation("com.github.java-json-tools:json-patch:1.13")
 	implementation("commons-io:commons-io:2.19.0")
+  implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.10")
 	implementation("org.apache.commons:commons-lang3")
+  implementation("org.flywaydb:flyway-core")
+  implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
+  implementation("org.redisson:redisson:3.48.0")
+  implementation("org.redisson:redisson-hibernate-6:3.48.0")
+  implementation("org.springframework:spring-aspects")
 
 	/* Runtime dependencies */
 	runtimeOnly("net.logstash.logback:logstash-logback-encoder:8.1")
+  runtimeOnly("org.postgresql:postgresql")
 
 	/* Development dependencies */
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 
 	/* Testing dependencies */
+  testImplementation("com.redis:testcontainers-redis:2.2.4")
 	testImplementation("com.thedeanda:lorem:2.2")
 	testImplementation("org.awaitility:awaitility:4.3.0")
 	testImplementation("org.awaitility:awaitility-kotlin:4.3.0")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
+  testImplementation("org.springframework.boot:spring-boot-testcontainers")
+  testImplementation("org.testcontainers:junit-jupiter")
+  testImplementation("org.testcontainers:postgresql")
+
+  /* Test runtime dependencies */
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

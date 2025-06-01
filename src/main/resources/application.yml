@@ -1,12 +1,30 @@
 spring:
   application:
     name: Nucleus
+  jpa:
+    hibernate:
+      naming:
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyComponentPathImpl
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+    properties:
+      hibernate:
+        globally_quoted_identifiers: true
+        cache:
+          use_query_cache: true
+          use_second_level_cache: true
+          region:
+            factory_class: org.redisson.hibernate.RedissonRegionFactory
+          redisson:
+            fallback: true
+            config: redisson.yml
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,auditevents
+        include:
+          - health
+          - auditevents
     access:
       default: none
   endpoint:
