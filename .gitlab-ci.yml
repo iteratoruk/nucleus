@@ -10,10 +10,12 @@ include:
 test:
   stage: test
   image: gradle:8.14-jdk21-alpine
+  privileged: true
   variables:
     FF_NETWORK_PER_BUILD: "true"
-    DOCKER_HOST: "tcp:docker:2375"
+    DOCKER_HOST: "tcp://docker:2375"
     DOCKER_TLS_CERTDIR: ""
+    DOCKER_TLS_VERIFY: 0
     DOCKER_DRIVER: overlay2
   services:
     - name: docker:28.2.2-dind
