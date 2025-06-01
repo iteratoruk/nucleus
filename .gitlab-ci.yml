@@ -16,8 +16,23 @@ test:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
   services:
-    - name: docker:dind
+    - name: docker:28.2.2-dind
       command: [ "--host=tcp://0.0.0.0:2375", "--tls=false" ]
+  before_script:
+    - echo "Installing Docker client..."
+    - apk add --no-cache docker-cli
+    - echo "Waiting for Docker daemon to be ready..."
+    - |
+      retry=0
+      while ! docker info >/dev/null 2>&1; do
+        if [ $retry -ge 30 ]; then
+          echo "Docker daemon did not start within 30 seconds."
+          exit 1
+        fi
+        retry=$((retry+1))
+        sleep 1
+      done
+    - echo "Docker daemon is ready."
   script:
     - ./gradlew build
   artifacts:
