@@ -18,6 +18,8 @@ test:
     - name: docker:dind
       command: [ "--tls=false" ]
   before_script:
+    - echo "Installing Docker client..."
+    - apk add --no-cache docker-cli
     - echo "Waiting for Docker daemon to be ready..."
     - |
       retry=0
