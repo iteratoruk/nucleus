@@ -21,7 +21,6 @@ test:
   before_script:
     - echo "Installing Docker client..."
     - apk add --no-cache docker-cli bash
-    - cat ~/.testcontainers.properties
     - echo "Waiting for Docker daemon to be ready..."
     - |
       retry=0
