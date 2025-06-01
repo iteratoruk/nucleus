@@ -24,7 +24,7 @@ test:
     - echo "Waiting for Docker daemon to be ready..."
     - |
       retry=0
-      while ! docker info >/dev/null 2>&1; do
+      while ! docker -H tcp://docker:2375 info >/dev/null 2>&1; do
         if [ $retry -ge 30 ]; then
           echo "Docker daemon did not start within 30 seconds."
           exit 1
