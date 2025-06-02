@@ -1,6 +1,6 @@
 package iterator.nucleus.customer
 
-import iterator.nucleus.AbstractJpaRepositoryTest
+import iterator.nucleus.AbstractMutableJpaRepositoryTest
 import iterator.nucleus.TestingFu.aValidCustomerTranche
 import iterator.nucleus.TestingFu.randomWords
 import jakarta.persistence.EntityManager
@@ -16,7 +16,12 @@ class CustomerTrancheRepositoryTest
     em: EntityManager,
     ctx: GenericApplicationContext,
     mvc: MockMvc,
-  ) : AbstractJpaRepositoryTest<CustomerTranche, CustomerTrancheRepository>(repo, em, ctx, mvc) {
+  ) : AbstractMutableJpaRepositoryTest<CustomerTranche, CustomerTrancheRepository>(
+      repo,
+      em,
+      ctx,
+      mvc,
+    ) {
     override fun randomValidEntity(): CustomerTranche = aValidCustomerTranche()
 
     override fun entityClass(): Class<CustomerTranche> = CustomerTranche::class.java

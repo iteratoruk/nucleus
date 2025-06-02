@@ -1,6 +1,6 @@
 package iterator.nucleus.parameter
 
-import iterator.nucleus.AbstractJpaRepositoryTest
+import iterator.nucleus.AbstractMutableJpaRepositoryTest
 import iterator.nucleus.TestingFu.randomAlphabetic
 import iterator.nucleus.TestingFu.randomWords
 import jakarta.persistence.EntityManager
@@ -15,7 +15,7 @@ class ParameterDefinitionRepositoryTest
     em: EntityManager,
     ctx: GenericApplicationContext,
     mvc: MockMvc,
-  ) : AbstractJpaRepositoryTest<ParameterDefinition, ParameterDefinitionRepository>(
+  ) : AbstractMutableJpaRepositoryTest<ParameterDefinition, ParameterDefinitionRepository>(
       repo,
       em,
       ctx,

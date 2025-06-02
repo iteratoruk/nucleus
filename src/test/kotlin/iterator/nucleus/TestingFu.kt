@@ -2,8 +2,11 @@ package iterator.nucleus
 
 import com.thedeanda.lorem.Lorem
 import com.thedeanda.lorem.LoremIpsum
+import iterator.nucleus.account.Account
 import iterator.nucleus.account.template.AccountTemplate
 import iterator.nucleus.customer.CustomerTranche
+import iterator.nucleus.ledger.LedgerEntry
+import iterator.nucleus.ledger.LedgerEntryType
 import org.apache.commons.lang3.RandomStringUtils
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -127,7 +130,28 @@ object TestingFu {
 
   // some random valid domain entities
 
+  fun aValidAccount(
+    accountTemplate: AccountTemplate,
+    customerTranche: CustomerTranche? = null,
+  ): Account =
+    Account(
+      accountId = UUID.randomUUID(),
+      accountTemplate = accountTemplate,
+      customerTranche = customerTranche,
+    )
+
   fun aValidCustomerTranche(): CustomerTranche = CustomerTranche(customerTrancheId = UUID.randomUUID(), displayName = randomWords(4))
 
   fun aValidAccountTemplate(): AccountTemplate = AccountTemplate(accountTemplateId = randomUUID(), displayName = randomWords(3))
+
+  fun aValidLedgerEntry(account: Account) =
+    LedgerEntry(
+      operationId = UUID.randomUUID(),
+      account = account,
+      type = randomEnum(LedgerEntryType::class.java),
+      amount = randomBigDecimal(0.01, 999999.99),
+      address = randomAlphabetic(16).uppercase(),
+      asset = randomAlphabetic(16).uppercase(),
+      timestamp = randomInstant(),
+    )
 }

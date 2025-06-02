@@ -32,8 +32,6 @@ abstract class AbstractJpaRepositoryTest<T : AbstractJpaEntity, R : AbstractJpaR
   EntityManagerHelper<T> {
   abstract fun randomValidEntity(): T
 
-  abstract fun mutateEntity(entity: T)
-
   @Test
   fun `should return count of entities`() {
     // given
@@ -240,21 +238,6 @@ abstract class AbstractJpaRepositoryTest<T : AbstractJpaEntity, R : AbstractJpaR
   }
 
   @Test
-  fun `should update version when save`() {
-    // given
-    val entity = randomValidEntity()
-    persistAndFlush(listOf(entity))
-    val version = entity.version
-    mutateEntity(entity)
-    // when
-    val saved = repo.save(entity)
-    // then
-    flush()
-    val found = find(saved.id)!!
-    then(found.version).isEqualTo(version + 1)
-  }
-
-  @Test
   fun `should set created audit fields on save`() {
     // given
     val before = Instant.now()
@@ -273,8 +256,48 @@ abstract class AbstractJpaRepositoryTest<T : AbstractJpaEntity, R : AbstractJpaR
     val found = find(saved!!.id)!!
     then(found.createdBy).isEqualTo(creator)
     then(found.createdDate).isNotNull().isBetween(before, after)
-    then(found.lastModifiedBy).isEqualTo(found.createdBy)
-    then(found.lastModifiedDate).isEqualTo(found.createdDate)
+  }
+
+  protected fun withMockAuditor(
+    clientId: String,
+    block: () -> Unit,
+  ) {
+    val request = MockHttpServletRequest()
+    request.setAttribute("X-Client-ID", clientId)
+    val attributes = ServletRequestAttributes(request)
+    RequestContextHolder.setRequestAttributes(attributes)
+    try {
+      block()
+    } finally {
+      RequestContextHolder.resetRequestAttributes()
+    }
+  }
+}
+
+abstract class AbstractMutableJpaRepositoryTest<
+  T : AbstractMutableJpaEntity,
+  R : AbstractJpaRepository<T>,
+>(
+  repo: R,
+  em: EntityManager,
+  ctx: GenericApplicationContext,
+  mvc: MockMvc,
+) : AbstractJpaRepositoryTest<T, R>(repo, em, ctx, mvc) {
+  abstract fun mutateEntity(entity: T)
+
+  @Test
+  fun `should update version when save`() {
+    // given
+    val entity = randomValidEntity()
+    persistAndFlush(listOf(entity))
+    val version = entity.version
+    mutateEntity(entity)
+    // when
+    val saved = repo.save(entity)
+    // then
+    flush()
+    val found = find(saved.id)!!
+    then(found.version).isEqualTo(version + 1)
   }
 
   @Test
@@ -301,20 +324,5 @@ abstract class AbstractJpaRepositoryTest<T : AbstractJpaEntity, R : AbstractJpaR
     then(found.createdBy).isEqualTo(creator)
     then(found.lastModifiedBy).isEqualTo(updater)
     then(found.lastModifiedDate).isAfter(found.createdDate)
-  }
-
-  protected fun withMockAuditor(
-    clientId: String,
-    block: () -> Unit,
-  ) {
-    val request = MockHttpServletRequest()
-    request.setAttribute("X-Client-ID", clientId)
-    val attributes = ServletRequestAttributes(request)
-    RequestContextHolder.setRequestAttributes(attributes)
-    try {
-      block()
-    } finally {
-      RequestContextHolder.resetRequestAttributes()
-    }
   }
 }

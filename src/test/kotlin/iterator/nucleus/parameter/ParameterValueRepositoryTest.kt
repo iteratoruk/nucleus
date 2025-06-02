@@ -1,6 +1,6 @@
 package iterator.nucleus.parameter
 
-import iterator.nucleus.AbstractJpaRepositoryTest
+import iterator.nucleus.AbstractMutableJpaRepositoryTest
 import iterator.nucleus.TestingFu.randomAlphabetic
 import iterator.nucleus.TestingFu.randomAlphanumeric
 import iterator.nucleus.TestingFu.randomBigDecimal
@@ -113,7 +113,7 @@ class ParameterValueRepositoryTest
     em: EntityManager,
     ctx: GenericApplicationContext,
     mvc: MockMvc,
-  ) : AbstractJpaRepositoryTest<ParameterValue, ParameterValueRepository>(repo, em, ctx, mvc) {
+  ) : AbstractMutableJpaRepositoryTest<ParameterValue, ParameterValueRepository>(repo, em, ctx, mvc) {
     companion object {
       @JvmStatic
       fun parameterResolutionScenarios(): Stream<Arguments> =

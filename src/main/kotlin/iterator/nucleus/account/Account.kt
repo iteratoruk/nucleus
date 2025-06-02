@@ -1,7 +1,7 @@
 package iterator.nucleus.account
 
-import iterator.nucleus.AbstractJpaEntity
 import iterator.nucleus.AbstractJpaRepository
+import iterator.nucleus.AbstractMutableJpaEntity
 import iterator.nucleus.account.template.AccountTemplate
 import iterator.nucleus.customer.CustomerTranche
 import jakarta.persistence.Entity
@@ -16,7 +16,7 @@ import java.util.UUID
 class Account(
   var accountId: UUID,
   @ManyToOne var accountTemplate: AccountTemplate,
-  @ManyToOne var customerTranche: CustomerTranche,
-) : AbstractJpaEntity()
+  @ManyToOne var customerTranche: CustomerTranche? = null,
+) : AbstractMutableJpaEntity()
 
 @Repository interface AccountRepository : AbstractJpaRepository<Account>

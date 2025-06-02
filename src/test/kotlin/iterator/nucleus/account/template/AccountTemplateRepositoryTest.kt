@@ -1,6 +1,6 @@
 package iterator.nucleus.account.template
 
-import iterator.nucleus.AbstractJpaRepositoryTest
+import iterator.nucleus.AbstractMutableJpaRepositoryTest
 import iterator.nucleus.TestingFu.aValidAccountTemplate
 import iterator.nucleus.TestingFu.randomWords
 import jakarta.persistence.EntityManager
@@ -15,7 +15,12 @@ class AccountTemplateRepositoryTest
     em: EntityManager,
     ctx: GenericApplicationContext,
     mvc: MockMvc,
-  ) : AbstractJpaRepositoryTest<AccountTemplate, AccountTemplateRepository>(repo, em, ctx, mvc) {
+  ) : AbstractMutableJpaRepositoryTest<AccountTemplate, AccountTemplateRepository>(
+      repo,
+      em,
+      ctx,
+      mvc,
+    ) {
     override fun randomValidEntity(): AccountTemplate = aValidAccountTemplate()
 
     override fun entityClass(): Class<AccountTemplate> = AccountTemplate::class.java

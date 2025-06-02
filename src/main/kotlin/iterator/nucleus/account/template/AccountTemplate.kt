@@ -1,7 +1,7 @@
 package iterator.nucleus.account.template
 
-import iterator.nucleus.AbstractJpaEntity
 import iterator.nucleus.AbstractJpaRepository
+import iterator.nucleus.AbstractMutableJpaEntity
 import jakarta.persistence.Entity
 import org.hibernate.annotations.Cache
 import org.hibernate.annotations.CacheConcurrencyStrategy
@@ -12,6 +12,6 @@ import org.springframework.stereotype.Repository
 class AccountTemplate(
   var accountTemplateId: String,
   var displayName: String,
-) : AbstractJpaEntity()
+) : AbstractMutableJpaEntity()
 
 @Repository interface AccountTemplateRepository : AbstractJpaRepository<AccountTemplate>

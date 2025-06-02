@@ -92,3 +92,34 @@ alter table "parameter_value"
       references "parameter_definition";
 
 create index "parameter_value_idx" on "parameter_value" ("definition_id", "level", "resource_id", "effective_from", "effective_to");
+
+create table "ledger_entry"
+(
+  "id"                bigserial                   not null,
+  "version"           int8                        not null,
+  "created_by"        varchar(255),
+  "created_date"      timestamp(6) with time zone not null,
+  "account_id"        bigint                      not null,
+  "reversed_entry_id" bigint,
+  "operation_id"      varchar(36)                 not null,
+  "address"           varchar(255)                not null,
+  "asset"             varchar(255)                not null,
+  "type"              varchar(64)                 not null,
+  "amount"            numeric(19, 7)              not null,
+  "timestamp"         timestamp with time zone    not null default current_timestamp,
+  primary key ("id")
+);
+
+alter table "ledger_entry"
+  add constraint "account_fk"
+    foreign key ("account_id")
+      references "account";
+
+alter table "ledger_entry"
+  add constraint "reversed_entry_fk"
+    foreign key ("reversed_entry_id")
+      references "ledger_entry";
+
+create unique index "ledger_entry_operation_idx" on "ledger_entry" ("operation_id");
+
+create index "ledger_entry_idx" on "ledger_entry" ("account_id", "address", "type");

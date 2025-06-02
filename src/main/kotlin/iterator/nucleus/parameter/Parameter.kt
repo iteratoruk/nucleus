@@ -1,7 +1,7 @@
 package iterator.nucleus.parameter
 
-import iterator.nucleus.AbstractJpaEntity
 import iterator.nucleus.AbstractJpaRepository
+import iterator.nucleus.AbstractMutableJpaEntity
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
@@ -22,7 +22,7 @@ class ParameterDefinition(
   var name: String,
   var displayName: String? = null,
   var description: String? = null,
-) : AbstractJpaEntity()
+) : AbstractMutableJpaEntity()
 
 @Repository interface ParameterDefinitionRepository : AbstractJpaRepository<ParameterDefinition>
 
@@ -36,7 +36,7 @@ class ParameterValue(
   @Enumerated(EnumType.STRING) var type: ParameterType = ParameterType.STRING,
   var effectiveFrom: Instant = Instant.now(),
   var effectiveTo: Instant? = null,
-) : AbstractJpaEntity()
+) : AbstractMutableJpaEntity()
 
 enum class ParameterLevel {
   GLOBAL,

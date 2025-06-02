@@ -1,6 +1,7 @@
 package iterator.nucleus.account
 
-import iterator.nucleus.AbstractJpaRepositoryTest
+import iterator.nucleus.AbstractMutableJpaRepositoryTest
+import iterator.nucleus.TestingFu.aValidAccount
 import iterator.nucleus.TestingFu.aValidAccountTemplate
 import iterator.nucleus.TestingFu.aValidCustomerTranche
 import jakarta.persistence.EntityManager
@@ -16,16 +17,12 @@ class AccountRepositoryTest
     em: EntityManager,
     ctx: GenericApplicationContext,
     mvc: MockMvc,
-  ) : AbstractJpaRepositoryTest<Account, AccountRepository>(repo, em, ctx, mvc) {
+  ) : AbstractMutableJpaRepositoryTest<Account, AccountRepository>(repo, em, ctx, mvc) {
     override fun randomValidEntity(): Account {
       val accountTemplate = aValidAccountTemplate()
       val customerTranche = aValidCustomerTranche()
       persistAndFlush(listOf(accountTemplate, customerTranche))
-      return Account(
-        accountId = UUID.randomUUID(),
-        accountTemplate = accountTemplate,
-        customerTranche = customerTranche,
-      )
+      return aValidAccount(accountTemplate, customerTranche)
     }
 
     override fun entityClass(): Class<Account> = Account::class.java

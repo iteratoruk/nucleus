@@ -46,10 +46,6 @@ abstract class AbstractJpaEntity : Comparable<AbstractJpaEntity> {
   @Column(updatable = false)
   var createdDate: Instant? = null
 
-  @LastModifiedBy var lastModifiedBy: String? = null
-
-  @LastModifiedDate var lastModifiedDate: Instant? = null
-
   override fun equals(other: Any?): Boolean {
     other ?: return false
     if (this === other) return true
@@ -63,6 +59,13 @@ abstract class AbstractJpaEntity : Comparable<AbstractJpaEntity> {
   override fun toString(): String = "${javaClass.simpleName}($id)"
 
   override fun compareTo(other: AbstractJpaEntity): Int = CompareToBuilder().append(id, other.id).toComparison()
+}
+
+@MappedSuperclass
+abstract class AbstractMutableJpaEntity : AbstractJpaEntity() {
+  @LastModifiedBy var lastModifiedBy: String? = null
+
+  @LastModifiedDate var lastModifiedDate: Instant? = null
 }
 
 @Component
