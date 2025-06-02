@@ -17,16 +17,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
-@Cache(region = "parameter-definitions", usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
-class ParameterDefinition(
-  var name: String,
-  var displayName: String? = null,
-  var description: String? = null,
-) : AbstractMutableJpaEntity()
-
-@Repository interface ParameterDefinitionRepository : AbstractJpaRepository<ParameterDefinition>
-
-@Entity
 @Cache(region = "parameter-values", usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
 class ParameterValue(
   @ManyToOne var definition: ParameterDefinition,

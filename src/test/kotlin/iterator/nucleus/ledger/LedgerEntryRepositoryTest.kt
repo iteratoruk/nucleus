@@ -10,6 +10,7 @@ import iterator.nucleus.toSevenDecimalPlaces
 import jakarta.persistence.EntityManager
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.test.web.servlet.MockMvc
@@ -183,6 +184,17 @@ class LedgerEntryRepositoryTest
           ),
         )
       assertThat(actual.map { ExpectedBalance.fromInterface(it) }).hasSameElementsAs(expected)
+    }
+
+    @Test
+    fun `should not be able to update ledger entry`() {
+      // given
+      val entry = randomValidEntity()
+      persistAndFlush(entry)
+      entry.amount = randomBigDecimal(10.00, 9999.99)
+
+      // when
+      assertThrows<UnsupportedOperationException> { repo.saveAndFlush(entry) }
     }
   }
 
