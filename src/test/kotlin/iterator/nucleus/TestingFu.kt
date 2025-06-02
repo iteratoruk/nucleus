@@ -3,6 +3,7 @@ package iterator.nucleus
 import com.thedeanda.lorem.Lorem
 import com.thedeanda.lorem.LoremIpsum
 import iterator.nucleus.account.Account
+import iterator.nucleus.account.AccountFeature
 import iterator.nucleus.account.template.AccountTemplate
 import iterator.nucleus.customer.CustomerTranche
 import iterator.nucleus.ledger.LedgerEntry
@@ -153,5 +154,11 @@ object TestingFu {
       address = randomAlphabetic(16).uppercase(),
       asset = randomAlphabetic(16).uppercase(),
       timestamp = randomInstant(),
+    )
+
+  fun aValidAccountFeature(): AccountFeature =
+    AccountFeature(
+      name = randomAlphabetic(16).uppercase(),
+      config = """{"${randomWords(1).lowercase()}" : "${randomWords(1).lowercase()}"}""",
     )
 }

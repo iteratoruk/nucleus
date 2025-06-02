@@ -4,7 +4,9 @@ import iterator.nucleus.AbstractJpaRepository
 import iterator.nucleus.AbstractMutableJpaEntity
 import iterator.nucleus.account.template.AccountTemplate
 import iterator.nucleus.customer.CustomerTranche
+import jakarta.persistence.CascadeType
 import jakarta.persistence.Entity
+import jakarta.persistence.ManyToMany
 import jakarta.persistence.ManyToOne
 import org.hibernate.annotations.Cache
 import org.hibernate.annotations.CacheConcurrencyStrategy
@@ -17,6 +19,8 @@ class Account(
   var accountId: UUID,
   @ManyToOne var accountTemplate: AccountTemplate,
   @ManyToOne var customerTranche: CustomerTranche? = null,
+  @ManyToMany(cascade = [CascadeType.PERSIST, CascadeType.MERGE])
+  var features: MutableSet<AccountFeature> = mutableSetOf(),
 ) : AbstractMutableJpaEntity()
 
 @Repository interface AccountRepository : AbstractJpaRepository<Account>

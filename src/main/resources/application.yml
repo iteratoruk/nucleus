@@ -67,3 +67,13 @@ management:
         include: "*"
     access:
       default: unrestricted
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: api-test
+  jpa:
+    show-sql: true
+

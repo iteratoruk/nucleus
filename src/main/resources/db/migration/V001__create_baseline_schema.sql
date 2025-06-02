@@ -52,6 +52,39 @@ alter table "account"
     foreign key ("customer_tranche_id")
       references "customer_tranche";
 
+create table "account_feature"
+(
+  "id"                 bigserial                   not null,
+  "version"            int8                        not null,
+  "created_by"         varchar(255),
+  "created_date"       timestamp(6) with time zone not null,
+  "last_modified_by"   varchar(255),
+  "last_modified_date" timestamp(6) with time zone,
+  "name"               varchar(64) not null ,
+  "config"             jsonb,
+  primary key ("id")
+);
+
+create unique index "account_feature_name_idx" on "account_feature" ("name");
+
+create table "account_account_feature" (
+  "accounts_id" bigint not null ,
+  "features_id" bigint not null ,
+  primary key (accounts_id, features_id)
+);
+
+alter table "account_account_feature"
+  add constraint "account_fk"
+    foreign key ("accounts_id")
+      references "account"
+      on delete cascade;
+
+alter table "account_account_feature"
+  add constraint "account_feature_fk"
+    foreign key ("features_id")
+      references "account_feature"
+      on delete no action;
+
 create table "parameter_definition"
 (
   "id"                 bigserial                   not null,
