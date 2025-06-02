@@ -70,40 +70,26 @@ data class EffectiveParameterArgs(
 )
 
 data class ExpectedEffectiveParameter(
-  val expectedName: String,
-  val expectedValue: String,
-  val expectedLevel: ParameterLevel,
-  val expectedType: ParameterType = ParameterType.STRING,
-  val expectedResourceId: String? = null,
-  val expectedEffectiveFrom: Instant = NOW,
-  val expectedEffectiveTo: Instant? = null,
+  override val name: String,
+  override val value: String,
+  override val level: ParameterLevel,
+  override val type: ParameterType = ParameterType.STRING,
+  override val resourceId: String? = null,
+  override val effectiveFrom: Instant = NOW,
+  override val effectiveTo: Instant? = null,
 ) : EffectiveParameter {
   companion object {
     fun fromInterface(param: EffectiveParameter): ExpectedEffectiveParameter =
       ExpectedEffectiveParameter(
-        expectedName = param.getName(),
-        expectedValue = param.getValue(),
-        expectedLevel = param.getLevel(),
-        expectedType = param.getType(),
-        expectedResourceId = param.getResourceId(),
-        expectedEffectiveFrom = param.getEffectiveFrom(),
-        expectedEffectiveTo = param.getEffectiveTo(),
+        name = param.name,
+        value = param.value,
+        level = param.level,
+        type = param.type,
+        resourceId = param.resourceId,
+        effectiveFrom = param.effectiveFrom,
+        effectiveTo = param.effectiveTo,
       )
   }
-
-  override fun getName(): String = expectedName
-
-  override fun getValue(): String = expectedValue
-
-  override fun getType(): ParameterType = expectedType
-
-  override fun getLevel(): ParameterLevel = expectedLevel
-
-  override fun getResourceId(): String? = expectedResourceId
-
-  override fun getEffectiveFrom(): Instant = expectedEffectiveFrom
-
-  override fun getEffectiveTo(): Instant? = expectedEffectiveTo
 }
 
 class ParameterValueRepositoryTest
@@ -156,10 +142,10 @@ class ParameterValueRepositoryTest
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    expectedName = "INTEREST_RATE",
-                    expectedLevel = ParameterLevel.GLOBAL,
-                    expectedValue = "0.01",
-                    expectedEffectiveFrom = NOW,
+                    name = "INTEREST_RATE",
+                    level = ParameterLevel.GLOBAL,
+                    value = "0.01",
+                    effectiveFrom = NOW,
                   ),
                 ),
             ),
@@ -194,10 +180,10 @@ class ParameterValueRepositoryTest
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    expectedName = "INTEREST_RATE",
-                    expectedValue = "0.02",
-                    expectedLevel = ParameterLevel.ACCOUNT_TEMPLATE,
-                    expectedResourceId = AN_ACCOUNT_TEMPLATE_ID,
+                    name = "INTEREST_RATE",
+                    value = "0.02",
+                    level = ParameterLevel.ACCOUNT_TEMPLATE,
+                    resourceId = AN_ACCOUNT_TEMPLATE_ID,
                   ),
                 ),
             ),
@@ -232,9 +218,9 @@ class ParameterValueRepositoryTest
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    expectedName = "INTEREST_RATE",
-                    expectedValue = "0.01",
-                    expectedLevel = ParameterLevel.GLOBAL,
+                    name = "INTEREST_RATE",
+                    value = "0.01",
+                    level = ParameterLevel.GLOBAL,
                   ),
                 ),
             ),
@@ -275,10 +261,10 @@ class ParameterValueRepositoryTest
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    expectedName = "INTEREST_RATE",
-                    expectedValue = "0.03",
-                    expectedLevel = ParameterLevel.CUSTOMER_TRANCHE,
-                    expectedResourceId = A_CUSTOMER_TRANCHE_ID,
+                    name = "INTEREST_RATE",
+                    value = "0.03",
+                    level = ParameterLevel.CUSTOMER_TRANCHE,
+                    resourceId = A_CUSTOMER_TRANCHE_ID,
                   ),
                 ),
             ),
@@ -319,10 +305,10 @@ class ParameterValueRepositoryTest
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    expectedName = "INTEREST_RATE",
-                    expectedValue = "0.02",
-                    expectedLevel = ParameterLevel.ACCOUNT_TEMPLATE,
-                    expectedResourceId = AN_ACCOUNT_TEMPLATE_ID,
+                    name = "INTEREST_RATE",
+                    value = "0.02",
+                    level = ParameterLevel.ACCOUNT_TEMPLATE,
+                    resourceId = AN_ACCOUNT_TEMPLATE_ID,
                   ),
                 ),
             ),
@@ -369,10 +355,10 @@ class ParameterValueRepositoryTest
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    expectedName = "INTEREST_RATE",
-                    expectedValue = "0.04",
-                    expectedLevel = ParameterLevel.ACCOUNT,
-                    expectedResourceId = AN_ACCOUNT_ID,
+                    name = "INTEREST_RATE",
+                    value = "0.04",
+                    level = ParameterLevel.ACCOUNT,
+                    resourceId = AN_ACCOUNT_ID,
                   ),
                 ),
             ),
@@ -419,10 +405,10 @@ class ParameterValueRepositoryTest
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    expectedName = "INTEREST_RATE",
-                    expectedValue = "0.03",
-                    expectedLevel = ParameterLevel.CUSTOMER_TRANCHE,
-                    expectedResourceId = A_CUSTOMER_TRANCHE_ID,
+                    name = "INTEREST_RATE",
+                    value = "0.03",
+                    level = ParameterLevel.CUSTOMER_TRANCHE,
+                    resourceId = A_CUSTOMER_TRANCHE_ID,
                   ),
                 ),
             ),
@@ -464,10 +450,10 @@ class ParameterValueRepositoryTest
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    expectedName = "INTEREST_RATE",
-                    expectedValue = "0.02",
-                    expectedLevel = ParameterLevel.GLOBAL,
-                    expectedEffectiveFrom = NOW,
+                    name = "INTEREST_RATE",
+                    value = "0.02",
+                    level = ParameterLevel.GLOBAL,
+                    effectiveFrom = NOW,
                   ),
                 ),
             ),

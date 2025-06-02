@@ -21,7 +21,7 @@ create table "customer_tranche"
   "created_date"        timestamp(6) with time zone not null,
   "last_modified_by"    varchar(255),
   "last_modified_date"  timestamp(6) with time zone,
-  "customer_tranche_id" varchar(36)                 not null,
+  "customer_tranche_id" uuid                        not null,
   "display_name"        varchar(255),
   primary key ("id")
 );
@@ -34,7 +34,7 @@ create table "account"
   "created_date"        timestamp(6) with time zone not null,
   "last_modified_by"    varchar(255),
   "last_modified_date"  timestamp(6) with time zone,
-  "account_id"          varchar(36)                 not null,
+  "account_id"          uuid                        not null,
   "account_template_id" bigint                      not null,
   "customer_tranche_id" bigint,
   primary key ("id")
@@ -101,7 +101,7 @@ create table "ledger_entry"
   "created_date"      timestamp(6) with time zone not null,
   "account_id"        bigint                      not null,
   "reversed_entry_id" bigint,
-  "operation_id"      varchar(36)                 not null,
+  "operation_id"      uuid                        not null,
   "address"           varchar(255)                not null,
   "asset"             varchar(255)                not null,
   "type"              varchar(64)                 not null,
@@ -122,4 +122,4 @@ alter table "ledger_entry"
 
 create unique index "ledger_entry_operation_idx" on "ledger_entry" ("operation_id");
 
-create index "ledger_entry_idx" on "ledger_entry" ("account_id", "address", "type");
+create index "ledger_entry_idx" on "ledger_entry" ("account_id", "address", "asset", "type");

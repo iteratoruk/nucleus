@@ -147,17 +147,11 @@ interface ParameterValueRepository : AbstractJpaRepository<ParameterValue> {
 }
 
 interface EffectiveParameter {
-  fun getName(): String
-
-  fun getValue(): String
-
-  fun getType(): ParameterType
-
-  fun getLevel(): ParameterLevel
-
-  fun getResourceId(): String?
-
-  fun getEffectiveFrom(): Instant
-
-  fun getEffectiveTo(): Instant?
+  val name: String
+  val value: String
+  val type: ParameterType
+  val level: ParameterLevel
+  val resourceId: String?
+  val effectiveFrom: Instant
+  val effectiveTo: Instant?
 }
