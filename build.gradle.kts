@@ -57,6 +57,8 @@ dependencies {
   implementation("com.github.java-json-tools:json-patch:1.13")
 	implementation("commons-io:commons-io:2.19.0")
   implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.10")
+  implementation("net.javacrumbs.shedlock:shedlock-spring:6.8.0")
+  implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:6.8.0")
 	implementation("org.apache.commons:commons-lang3")
   implementation("org.flywaydb:flyway-core")
   implementation("org.flywaydb:flyway-database-postgresql")
@@ -64,6 +66,7 @@ dependencies {
   implementation("org.redisson:redisson:3.48.0")
   implementation("org.redisson:redisson-hibernate-6:3.48.0")
   implementation("org.springframework:spring-aspects")
+  implementation("org.springframework.kafka:spring-kafka")
 
 	/* Runtime dependencies */
 	runtimeOnly("net.logstash.logback:logstash-logback-encoder:8.1")
@@ -82,6 +85,7 @@ dependencies {
 	testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("org.springframework.boot:spring-boot-testcontainers")
+  testImplementation("org.springframework.kafka:spring-kafka-test")
   testImplementation("org.testcontainers:junit-jupiter")
   testImplementation("org.testcontainers:postgresql")
 

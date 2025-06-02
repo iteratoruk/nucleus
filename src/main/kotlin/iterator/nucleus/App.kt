@@ -4,13 +4,18 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
+import net.javacrumbs.shedlock.core.LockProvider
+import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing
 import org.springframework.scheduling.annotation.EnableAsync
+import org.springframework.scheduling.annotation.EnableScheduling
+import javax.sql.DataSource
 
 @EnableAsync
+@EnableScheduling
 @EnableJpaAuditing
 @SpringBootApplication
 class App {
@@ -23,6 +28,9 @@ class App {
   }
 
   @Bean fun objectMapper(): ObjectMapper = Serialization.mapper
+
+  @Bean
+  fun lockProvider(dataSource: DataSource): LockProvider = JdbcTemplateLockProvider(dataSource)
 }
 
 object NucleusHeaders {
