@@ -139,6 +139,8 @@ complexity:
     constructorThreshold: 7
     ignoreDefaultParameters: false
     ignoreDataClasses: true
+    ignoreAnnotated:
+      - jakarta.persistence.Entity
     ignoreAnnotatedParameter: []
     excludes:
       - "**/src/test/kotlin/**"

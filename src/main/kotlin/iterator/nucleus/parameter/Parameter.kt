@@ -8,12 +8,13 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.ManyToOne
 import org.hibernate.annotations.Cache
 import org.hibernate.annotations.CacheConcurrencyStrategy
-import org.hibernate.annotations.JdbcTypeCode
-import org.hibernate.type.SqlTypes
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
 
 @Entity
 @Cache(region = "parameter-definitions", usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
@@ -31,7 +32,8 @@ class ParameterValue(
   @ManyToOne var definition: ParameterDefinition,
   @Enumerated(EnumType.STRING) var level: ParameterLevel,
   var resourceId: String? = null,
-  @JdbcTypeCode(SqlTypes.JSON) var value: String,
+  var value: String,
+  @Enumerated(EnumType.STRING) var type: ParameterType = ParameterType.STRING,
   var effectiveFrom: Instant = Instant.now(),
   var effectiveTo: Instant? = null,
 ) : AbstractJpaEntity()
@@ -41,6 +43,39 @@ enum class ParameterLevel {
   ACCOUNT_TEMPLATE,
   CUSTOMER_TRANCHE,
   ACCOUNT,
+}
+
+@Suppress("UNCHECKED_CAST")
+enum class ParameterType(
+  val returnType: Class<*>,
+) {
+  STRING(String::class.java) {
+    override fun <T> convert(value: String): T = value as T
+  },
+  INT(Int::class.java) {
+    override fun <T> convert(value: String): T = value.toInt() as T
+  },
+  LONG(Long::class.java) {
+    override fun <T> convert(value: String): T = value.toLong() as T
+  },
+  DOUBLE(Double::class.java) {
+    override fun <T> convert(value: String): T = value.toDouble() as T
+  },
+  BIG_DECIMAL(BigDecimal::class.java) {
+    override fun <T> convert(value: String): T = value.toBigDecimal() as T
+  },
+  BOOLEAN(Boolean::class.java) {
+    override fun <T> convert(value: String): T = value.toBoolean() as T
+  },
+  DATE(LocalDate::class.java) {
+    override fun <T> convert(value: String): T = LocalDate.parse(value) as T
+  },
+  DATETIME(LocalDateTime::class.java) {
+    override fun <T> convert(value: String): T = LocalDateTime.parse(value) as T
+  },
+  ;
+
+  abstract fun <T> convert(value: String): T
 }
 
 @Repository
@@ -53,6 +88,7 @@ interface ParameterValueRepository : AbstractJpaRepository<ParameterValue> {
                 pv.id as pv_id,
                 pd.name as name,
                 pv.value as value,
+                pv.type as type,
                 pv.level as level,
                 pv.resource_id as resource_id,
                 pv.effective_from as effective_from,
@@ -92,6 +128,7 @@ interface ParameterValueRepository : AbstractJpaRepository<ParameterValue> {
             name,
             value,
             level,
+            type,
             resource_id,
             effective_from,
             effective_to
@@ -113,6 +150,8 @@ interface EffectiveParameter {
   fun getName(): String
 
   fun getValue(): String
+
+  fun getType(): ParameterType
 
   fun getLevel(): ParameterLevel
 

@@ -1,12 +1,12 @@
 create table "account_template"
 (
-  "id"                  bigserial    not null,
-  "version"             int8         not null,
+  "id"                  bigserial                   not null,
+  "version"             int8                        not null,
   "created_by"          varchar(255),
   "created_date"        timestamp(6) with time zone not null,
   "last_modified_by"    varchar(255),
   "last_modified_date"  timestamp(6) with time zone,
-  "account_template_id" varchar(255) not null,
+  "account_template_id" varchar(255)                not null,
   "display_name"        varchar(255),
   primary key ("id")
 );
@@ -15,27 +15,27 @@ create unique index "account_template_id_idx" on "account_template" ("account_te
 
 create table "customer_tranche"
 (
-  "id"                  bigserial    not null,
-  "version"             int8         not null,
+  "id"                  bigserial                   not null,
+  "version"             int8                        not null,
   "created_by"          varchar(255),
   "created_date"        timestamp(6) with time zone not null,
   "last_modified_by"    varchar(255),
   "last_modified_date"  timestamp(6) with time zone,
-  "customer_tranche_id" varchar(36)  not null,
+  "customer_tranche_id" varchar(36)                 not null,
   "display_name"        varchar(255),
   primary key ("id")
 );
 
 create table "account"
 (
-  "id"                  bigserial    not null,
-  "version"             int8         not null,
+  "id"                  bigserial                   not null,
+  "version"             int8                        not null,
   "created_by"          varchar(255),
   "created_date"        timestamp(6) with time zone not null,
   "last_modified_by"    varchar(255),
   "last_modified_date"  timestamp(6) with time zone,
-  "account_id"          varchar(36)  not null,
-  "account_template_id" bigint       not null,
+  "account_id"          varchar(36)                 not null,
+  "account_template_id" bigint                      not null,
   "customer_tranche_id" bigint,
   primary key ("id")
 );
@@ -54,13 +54,13 @@ alter table "account"
 
 create table "parameter_definition"
 (
-  "id"                 bigserial    not null,
-  "version"            int8         not null,
+  "id"                 bigserial                   not null,
+  "version"            int8                        not null,
   "created_by"         varchar(255),
   "created_date"       timestamp(6) with time zone not null,
   "last_modified_by"   varchar(255),
   "last_modified_date" timestamp(6) with time zone,
-  "name"               varchar(255) not null,
+  "name"               varchar(255)                not null,
   "display_name"       varchar(255),
   "description"        varchar(255),
   primary key ("id")
@@ -70,18 +70,19 @@ create unique index "parameter_definition_name_idx" on "parameter_definition" ("
 
 create table "parameter_value"
 (
-  "id"                      bigserial    not null,
-  "version"                 int8         not null,
-  "created_by"              varchar(255),
-  "created_date"            timestamp(6) with time zone not null,
-  "last_modified_by"        varchar(255),
-  "last_modified_date"      timestamp(6) with time zone,
-  "definition_id" bigint       not null,
-  "level"                   varchar(255) not null,
-  "resource_id"             varchar(255),
-  "value"                   jsonb        not null,
-  "effective_from"          timestamp with time zone not null default current_timestamp,
-  "effective_to"            timestamp with time zone,
+  "id"                 bigserial                   not null,
+  "version"            int8                        not null,
+  "created_by"         varchar(255),
+  "created_date"       timestamp(6) with time zone not null,
+  "last_modified_by"   varchar(255),
+  "last_modified_date" timestamp(6) with time zone,
+  "definition_id"      bigint                      not null,
+  "level"              varchar(255)                not null,
+  "resource_id"        varchar(255),
+  "value"              text                        not null,
+  "type"               varchar(255)                not null,
+  "effective_from"     timestamp with time zone    not null default current_timestamp,
+  "effective_to"       timestamp with time zone,
   primary key ("id")
 );
 
@@ -90,8 +91,4 @@ alter table "parameter_value"
     foreign key ("definition_id")
       references "parameter_definition";
 
-create index "parameter_value_effective_date_idx" on "parameter_value" ("effective_from", "effective_to");
-
-create index "parameter_value_level_idx" on "parameter_value" ("level");
-
-create index "parameter_value_resource_id_idx" on "parameter_value" ("resource_id");
+create index "parameter_value_idx" on "parameter_value" ("definition_id", "level", "resource_id", "effective_from", "effective_to");

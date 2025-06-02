@@ -3,18 +3,29 @@ package iterator.nucleus.parameter
 import iterator.nucleus.AbstractJpaRepositoryTest
 import iterator.nucleus.TestingFu.randomAlphabetic
 import iterator.nucleus.TestingFu.randomAlphanumeric
+import iterator.nucleus.TestingFu.randomBigDecimal
+import iterator.nucleus.TestingFu.randomBoolean
+import iterator.nucleus.TestingFu.randomDouble
 import iterator.nucleus.TestingFu.randomEnum
 import iterator.nucleus.TestingFu.randomInstant
+import iterator.nucleus.TestingFu.randomInt
+import iterator.nucleus.TestingFu.randomLocalDate
+import iterator.nucleus.TestingFu.randomLocalDateTimeInThePast
+import iterator.nucleus.TestingFu.randomLong
 import iterator.nucleus.truncatedToPostgresAccuracy
 import jakarta.persistence.EntityManager
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.test.web.servlet.MockMvc
+import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.stream.Stream
@@ -26,8 +37,6 @@ val AN_ACCOUNT_TEMPLATE_ID: String = randomAlphanumeric(16)
 val ANOTHER_ACCOUNT_TEMPLATE_ID: String = randomAlphanumeric(16)
 val A_CUSTOMER_TRANCHE_ID: String = UUID.randomUUID().toString()
 val ANOTHER_CUSTOMER_TRANCHE_ID: String = UUID.randomUUID().toString()
-
-fun jsonString(value: String): String = """{"value": "$value"}"""
 
 data class ParameterResolutionScenario(
   val description: String,
@@ -46,6 +55,7 @@ data class ParameterSetup(
 data class ParameterSetupValue(
   val level: ParameterLevel,
   val value: String,
+  val type: ParameterType = ParameterType.STRING,
   val resourceId: String? = null,
   val effectiveFrom: Instant = NOW,
   val effectiveTo: Instant? = null,
@@ -63,6 +73,7 @@ data class ExpectedEffectiveParameter(
   val expectedName: String,
   val expectedValue: String,
   val expectedLevel: ParameterLevel,
+  val expectedType: ParameterType = ParameterType.STRING,
   val expectedResourceId: String? = null,
   val expectedEffectiveFrom: Instant = NOW,
   val expectedEffectiveTo: Instant? = null,
@@ -73,6 +84,7 @@ data class ExpectedEffectiveParameter(
         expectedName = param.getName(),
         expectedValue = param.getValue(),
         expectedLevel = param.getLevel(),
+        expectedType = param.getType(),
         expectedResourceId = param.getResourceId(),
         expectedEffectiveFrom = param.getEffectiveFrom(),
         expectedEffectiveTo = param.getEffectiveTo(),
@@ -82,6 +94,8 @@ data class ExpectedEffectiveParameter(
   override fun getName(): String = expectedName
 
   override fun getValue(): String = expectedValue
+
+  override fun getType(): ParameterType = expectedType
 
   override fun getLevel(): ParameterLevel = expectedLevel
 
@@ -129,7 +143,7 @@ class ParameterValueRepositoryTest
                       listOf(
                         ParameterSetupValue(
                           level = ParameterLevel.GLOBAL,
-                          value = jsonString("0.01"),
+                          value = "0.01",
                         ),
                       ),
                   ),
@@ -144,7 +158,7 @@ class ParameterValueRepositoryTest
                   ExpectedEffectiveParameter(
                     expectedName = "INTEREST_RATE",
                     expectedLevel = ParameterLevel.GLOBAL,
-                    expectedValue = jsonString("0.01"),
+                    expectedValue = "0.01",
                     expectedEffectiveFrom = NOW,
                   ),
                 ),
@@ -162,11 +176,11 @@ class ParameterValueRepositoryTest
                       listOf(
                         ParameterSetupValue(
                           level = ParameterLevel.GLOBAL,
-                          value = jsonString("0.01"),
+                          value = "0.01",
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.ACCOUNT_TEMPLATE,
-                          value = jsonString("0.02"),
+                          value = "0.02",
                           resourceId = AN_ACCOUNT_TEMPLATE_ID,
                         ),
                       ),
@@ -181,7 +195,7 @@ class ParameterValueRepositoryTest
                 listOf(
                   ExpectedEffectiveParameter(
                     expectedName = "INTEREST_RATE",
-                    expectedValue = jsonString("0.02"),
+                    expectedValue = "0.02",
                     expectedLevel = ParameterLevel.ACCOUNT_TEMPLATE,
                     expectedResourceId = AN_ACCOUNT_TEMPLATE_ID,
                   ),
@@ -200,11 +214,11 @@ class ParameterValueRepositoryTest
                       listOf(
                         ParameterSetupValue(
                           level = ParameterLevel.GLOBAL,
-                          value = jsonString("0.01"),
+                          value = "0.01",
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.ACCOUNT_TEMPLATE,
-                          value = jsonString("0.02"),
+                          value = "0.02",
                           resourceId = ANOTHER_ACCOUNT_TEMPLATE_ID,
                         ),
                       ),
@@ -219,7 +233,7 @@ class ParameterValueRepositoryTest
                 listOf(
                   ExpectedEffectiveParameter(
                     expectedName = "INTEREST_RATE",
-                    expectedValue = jsonString("0.01"),
+                    expectedValue = "0.01",
                     expectedLevel = ParameterLevel.GLOBAL,
                   ),
                 ),
@@ -237,16 +251,16 @@ class ParameterValueRepositoryTest
                       listOf(
                         ParameterSetupValue(
                           level = ParameterLevel.GLOBAL,
-                          value = jsonString("0.01"),
+                          value = "0.01",
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.ACCOUNT_TEMPLATE,
-                          value = jsonString("0.02"),
+                          value = "0.02",
                           resourceId = AN_ACCOUNT_TEMPLATE_ID,
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.CUSTOMER_TRANCHE,
-                          value = jsonString("0.03"),
+                          value = "0.03",
                           resourceId = A_CUSTOMER_TRANCHE_ID,
                         ),
                       ),
@@ -262,7 +276,7 @@ class ParameterValueRepositoryTest
                 listOf(
                   ExpectedEffectiveParameter(
                     expectedName = "INTEREST_RATE",
-                    expectedValue = jsonString("0.03"),
+                    expectedValue = "0.03",
                     expectedLevel = ParameterLevel.CUSTOMER_TRANCHE,
                     expectedResourceId = A_CUSTOMER_TRANCHE_ID,
                   ),
@@ -281,16 +295,16 @@ class ParameterValueRepositoryTest
                       listOf(
                         ParameterSetupValue(
                           level = ParameterLevel.GLOBAL,
-                          value = jsonString("0.01"),
+                          value = "0.01",
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.ACCOUNT_TEMPLATE,
-                          value = jsonString("0.02"),
+                          value = "0.02",
                           resourceId = AN_ACCOUNT_TEMPLATE_ID,
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.CUSTOMER_TRANCHE,
-                          value = jsonString("0.03"),
+                          value = "0.03",
                           resourceId = ANOTHER_CUSTOMER_TRANCHE_ID,
                         ),
                       ),
@@ -306,7 +320,7 @@ class ParameterValueRepositoryTest
                 listOf(
                   ExpectedEffectiveParameter(
                     expectedName = "INTEREST_RATE",
-                    expectedValue = jsonString("0.02"),
+                    expectedValue = "0.02",
                     expectedLevel = ParameterLevel.ACCOUNT_TEMPLATE,
                     expectedResourceId = AN_ACCOUNT_TEMPLATE_ID,
                   ),
@@ -325,21 +339,21 @@ class ParameterValueRepositoryTest
                       listOf(
                         ParameterSetupValue(
                           level = ParameterLevel.GLOBAL,
-                          value = jsonString("0.01"),
+                          value = "0.01",
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.ACCOUNT_TEMPLATE,
-                          value = jsonString("0.02"),
+                          value = "0.02",
                           resourceId = AN_ACCOUNT_TEMPLATE_ID,
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.CUSTOMER_TRANCHE,
-                          value = jsonString("0.03"),
+                          value = "0.03",
                           resourceId = A_CUSTOMER_TRANCHE_ID,
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.ACCOUNT,
-                          value = jsonString("0.04"),
+                          value = "0.04",
                           resourceId = AN_ACCOUNT_ID,
                         ),
                       ),
@@ -356,7 +370,7 @@ class ParameterValueRepositoryTest
                 listOf(
                   ExpectedEffectiveParameter(
                     expectedName = "INTEREST_RATE",
-                    expectedValue = jsonString("0.04"),
+                    expectedValue = "0.04",
                     expectedLevel = ParameterLevel.ACCOUNT,
                     expectedResourceId = AN_ACCOUNT_ID,
                   ),
@@ -375,21 +389,21 @@ class ParameterValueRepositoryTest
                       listOf(
                         ParameterSetupValue(
                           level = ParameterLevel.GLOBAL,
-                          value = jsonString("0.01"),
+                          value = "0.01",
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.ACCOUNT_TEMPLATE,
-                          value = jsonString("0.02"),
+                          value = "0.02",
                           resourceId = AN_ACCOUNT_TEMPLATE_ID,
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.CUSTOMER_TRANCHE,
-                          value = jsonString("0.03"),
+                          value = "0.03",
                           resourceId = A_CUSTOMER_TRANCHE_ID,
                         ),
                         ParameterSetupValue(
                           level = ParameterLevel.ACCOUNT,
-                          value = jsonString("0.04"),
+                          value = "0.04",
                           resourceId = ANOTHER_ACCOUNT_ID,
                         ),
                       ),
@@ -406,7 +420,7 @@ class ParameterValueRepositoryTest
                 listOf(
                   ExpectedEffectiveParameter(
                     expectedName = "INTEREST_RATE",
-                    expectedValue = jsonString("0.03"),
+                    expectedValue = "0.03",
                     expectedLevel = ParameterLevel.CUSTOMER_TRANCHE,
                     expectedResourceId = A_CUSTOMER_TRANCHE_ID,
                   ),
@@ -427,7 +441,7 @@ class ParameterValueRepositoryTest
                         // is EXCLUSIVE.
                         ParameterSetupValue(
                           level = ParameterLevel.ACCOUNT_TEMPLATE,
-                          value = jsonString("0.01"),
+                          value = "0.01",
                           resourceId = AN_ACCOUNT_TEMPLATE_ID,
                           effectiveFrom = NOW.minus(1, ChronoUnit.DAYS),
                           effectiveTo = NOW,
@@ -436,7 +450,7 @@ class ParameterValueRepositoryTest
                         // is INCLUSIVE.
                         ParameterSetupValue(
                           level = ParameterLevel.GLOBAL,
-                          value = jsonString("0.02"),
+                          value = "0.02",
                           effectiveFrom = NOW,
                         ),
                       ),
@@ -451,7 +465,7 @@ class ParameterValueRepositoryTest
                 listOf(
                   ExpectedEffectiveParameter(
                     expectedName = "INTEREST_RATE",
-                    expectedValue = jsonString("0.02"),
+                    expectedValue = "0.02",
                     expectedLevel = ParameterLevel.GLOBAL,
                     expectedEffectiveFrom = NOW,
                   ),
@@ -503,6 +517,7 @@ class ParameterValueRepositoryTest
               definition = definition,
               level = v.level,
               value = v.value,
+              type = v.type,
               resourceId = v.resourceId,
               effectiveFrom = v.effectiveFrom,
               effectiveTo = v.effectiveTo,
@@ -524,5 +539,131 @@ class ParameterValueRepositoryTest
       // then
       assertThat(actual.map { ExpectedEffectiveParameter.fromInterface(it) })
         .isEqualTo(scenario.expected)
+    }
+
+    @Test
+    fun `parameter value can be set as an int`() {
+      // given
+      val param = randomValidEntity()
+      persistAndFlush(param)
+      val i = randomInt()
+      param.value = i.toString()
+      param.type = ParameterType.INT
+      persistAndFlush(param)
+
+      // when
+      val found = find(param.id)!!
+
+      // then
+      val actual = found.type.convert<Int>(found.value)
+      assertThat(actual).isEqualTo(i)
+    }
+
+    @Test
+    fun `parameter value can be set as a long`() {
+      // given
+      val param = randomValidEntity()
+      persistAndFlush(param)
+      val i = randomLong()
+      param.value = i.toString()
+      param.type = ParameterType.LONG
+      persistAndFlush(param)
+
+      // when
+      val found = find(param.id)!!
+
+      // then
+      val actual = found.type.convert<Long>(found.value)
+      assertThat(actual).isEqualTo(i)
+    }
+
+    @Test
+    fun `parameter value can be set as a double`() {
+      // given
+      val param = randomValidEntity()
+      persistAndFlush(param)
+      val i = randomDouble(0.00, 9999.99)
+      param.value = i.toString()
+      param.type = ParameterType.DOUBLE
+      persistAndFlush(param)
+
+      // when
+      val found = find(param.id)!!
+
+      // then
+      val actual = found.type.convert<Double>(found.value)
+      assertThat(actual).isEqualTo(i)
+    }
+
+    @Test
+    fun `parameter value can be set as a big decimal`() {
+      // given
+      val param = randomValidEntity()
+      persistAndFlush(param)
+      val i = randomBigDecimal(0.00, 9999.99)
+      param.value = i.toString()
+      param.type = ParameterType.BIG_DECIMAL
+      persistAndFlush(param)
+
+      // when
+      val found = find(param.id)!!
+
+      // then
+      val actual = found.type.convert<BigDecimal>(found.value)
+      assertThat(actual).isEqualTo(i)
+    }
+
+    @Test
+    fun `parameter value can be set as a boolean`() {
+      // given
+      val param = randomValidEntity()
+      persistAndFlush(param)
+      val i = randomBoolean()
+      param.value = i.toString()
+      param.type = ParameterType.BOOLEAN
+      persistAndFlush(param)
+
+      // when
+      val found = find(param.id)!!
+
+      // then
+      val actual = found.type.convert<Boolean>(found.value)
+      assertThat(actual).isEqualTo(i)
+    }
+
+    @Test
+    fun `parameter value can be set as a date`() {
+      // given
+      val param = randomValidEntity()
+      persistAndFlush(param)
+      val i = randomLocalDate()
+      param.value = i.toString()
+      param.type = ParameterType.DATE
+      persistAndFlush(param)
+
+      // when
+      val found = find(param.id)!!
+
+      // then
+      val actual = found.type.convert<LocalDate>(found.value)
+      assertThat(actual).isEqualTo(i)
+    }
+
+    @Test
+    fun `parameter value can be set as a datetime`() {
+      // given
+      val param = randomValidEntity()
+      persistAndFlush(param)
+      val i = randomLocalDateTimeInThePast()
+      param.value = i.toString()
+      param.type = ParameterType.DATETIME
+      persistAndFlush(param)
+
+      // when
+      val found = find(param.id)!!
+
+      // then
+      val actual = found.type.convert<LocalDateTime>(found.value)
+      assertThat(actual).isEqualTo(i)
     }
   }
