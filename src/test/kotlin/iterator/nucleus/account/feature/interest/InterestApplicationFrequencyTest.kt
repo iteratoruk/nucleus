@@ -73,7 +73,18 @@ class InterestApplicationFrequencyTest {
             shouldApply = false,
           ),
         ),
-        // 5. Exact match on 28th in February (Feb 28, 2025 is normal match for day=28)
+        // 5. Last day of a 31-day month when rule is day=30 should NOT apply
+        Arguments.of(
+          ApplyInterestScenario(
+            day = 31,
+            month = 5,
+            year = 2025,
+            interestApplicationDay = 30,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            shouldApply = false,
+          ),
+        ),
+        // 6. Exact match on 28th in February (Feb 28, 2025 is normal match for day=28)
         Arguments.of(
           ApplyInterestScenario(
             day = 28,
@@ -84,7 +95,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = true,
           ),
         ),
-        // 6. Last‐day‐of‐Feb(28) for an “apply on 29” rule in a non‐leap‐year (2025)
+        // 7. Last‐day‐of‐Feb(28) for an “apply on 29” rule in a non‐leap‐year (2025)
         Arguments.of(
           ApplyInterestScenario(
             day = 28,
@@ -95,7 +106,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = true,
           ),
         ),
-        // 7. Not last day (Feb 27 < apply‐on 29) ⇒ should NOT apply
+        // 8. Not last day (Feb 27 < apply‐on 29) ⇒ should NOT apply
         Arguments.of(
           ApplyInterestScenario(
             day = 27,
@@ -106,7 +117,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = false,
           ),
         ),
-        // 8. Leap‐year normal match (Feb 29, 2024 for day=29)
+        // 9. Leap‐year normal match (Feb 29, 2024 for day=29)
         Arguments.of(
           ApplyInterestScenario(
             day = 29,
@@ -117,7 +128,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = true,
           ),
         ),
-        // 9. Leap‐year last‐day‐case for “apply on 30” rule (Feb 29, 2024 is last day,
+        // 10. Leap‐year last‐day‐case for “apply on 30” rule (Feb 29, 2024 is last day,
         // interestApplicationDay=30)
         Arguments.of(
           ApplyInterestScenario(
@@ -129,7 +140,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = true,
           ),
         ),
-        // 10. Leap‐year not‐last (Feb 28, 2024 < apply‐on 30) ⇒ should NOT apply
+        // 11. Leap‐year not‐last (Feb 28, 2024 < apply‐on 30) ⇒ should NOT apply
         Arguments.of(
           ApplyInterestScenario(
             day = 28,
@@ -141,7 +152,7 @@ class InterestApplicationFrequencyTest {
           ),
         ),
         // ─── ANNUAL FREQUENCY ───────────────────────────────────────────────────────────
-        // 11. Exact annual match (June 15, 2025 for month=6, day=15)
+        // 12. Exact annual match (June 15, 2025 for month=6, day=15)
         Arguments.of(
           ApplyInterestScenario(
             day = 15,
@@ -153,7 +164,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = true,
           ),
         ),
-        // 12. Same month/day off by one (June 14, 2025 ≠ day=15)
+        // 13. Same month/day off by one (June 14, 2025 ≠ day=15)
         Arguments.of(
           ApplyInterestScenario(
             day = 14,
@@ -165,7 +176,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = false,
           ),
         ),
-        // 13. Month mismatch (July 15, 2025 vs apply‐in June)
+        // 14. Month mismatch (July 15, 2025 vs apply‐in June)
         Arguments.of(
           ApplyInterestScenario(
             day = 15,
@@ -177,7 +188,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = false,
           ),
         ),
-        // 14. Non‐leap “Feb 28” with apply—“Feb 29” rule (Feb 28, 2025)
+        // 15. Non‐leap “Feb 28” with apply—“Feb 29” rule (Feb 28, 2025)
         Arguments.of(
           ApplyInterestScenario(
             day = 28,
@@ -189,7 +200,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = true,
           ),
         ),
-        // 15. Leap‐year exact match (Feb 29, 2024 for apply‐in Feb day=29)
+        // 16. Leap‐year exact match (Feb 29, 2024 for apply‐in Feb day=29)
         Arguments.of(
           ApplyInterestScenario(
             day = 29,
@@ -201,7 +212,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = true,
           ),
         ),
-        // 16. April 30 “last‐day‐of‐month” for apply‐on 31 rule in April
+        // 17. April 30 “last‐day‐of‐month” for apply‐on 31 rule in April
         Arguments.of(
           ApplyInterestScenario(
             day = 30,
@@ -213,7 +224,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = true,
           ),
         ),
-        // 17. Same month but not‐last day (April 29, 2025 < apply‐on 31 in April)
+        // 18. Same month but not‐last day (April 29, 2025 < apply‐on 31 in April)
         Arguments.of(
           ApplyInterestScenario(
             day = 29,
@@ -225,7 +236,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = false,
           ),
         ),
-        // 18. January 31 “last‐day” for apply‐on 32 rule in January
+        // 19. January 31 “last‐day” for apply‐on 32 rule in January
         Arguments.of(
           ApplyInterestScenario(
             day = 31,
@@ -237,7 +248,7 @@ class InterestApplicationFrequencyTest {
             shouldApply = true,
           ),
         ),
-        // 19. Same month but not last (Jan 30, 2025 < apply‐on 32 in January)
+        // 20. Same month but not last (Jan 30, 2025 < apply‐on 32 in January)
         Arguments.of(
           ApplyInterestScenario(
             day = 30,
