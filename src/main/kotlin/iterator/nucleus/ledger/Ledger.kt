@@ -3,7 +3,6 @@ package iterator.nucleus.ledger
 import iterator.nucleus.AbstractJpaEntity
 import iterator.nucleus.AbstractJpaRepository
 import iterator.nucleus.account.Account
-import iterator.nucleus.account.AccountService
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -23,8 +22,8 @@ import java.time.Instant
 import java.util.UUID
 
 @Entity
-@Cache(region = "ledger-entries", usage = CacheConcurrencyStrategy.READ_ONLY)
 @Immutable
+@Cache(region = "ledger-entries", usage = CacheConcurrencyStrategy.READ_ONLY)
 class LedgerEntry(
   var operationId: UUID,
   @ManyToOne var account: Account,
@@ -39,7 +38,6 @@ class LedgerEntry(
 @Service
 class LedgerEntryService(
   val repo: LedgerEntryRepository,
-  val accountService: AccountService,
 ) {
   fun findCommittedBalance(
     accountId: UUID,

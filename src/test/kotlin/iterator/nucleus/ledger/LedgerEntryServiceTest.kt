@@ -26,7 +26,7 @@ class LedgerEntryServiceTest(
   @Mock val repo: LedgerEntryRepository,
   @Mock val accounts: AccountService,
 ) {
-  val service = LedgerEntryService(repo, accounts)
+  val service = LedgerEntryService(repo)
 
   @Test
   fun `createTransfer should return empty list when amount is zero`() {
