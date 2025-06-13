@@ -22,7 +22,7 @@ class InterestFeatureKafkaConfigurationTest {
 
   @MethodSource("expectedTopics")
   @ParameterizedTest(
-    name = "should create topic {0} with correct num partitions and replication factory",
+    name = "should create topic {0} with correct num partitions and replication factor",
   )
   fun `should create topics`(topic: String) {
     // given
