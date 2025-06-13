@@ -1,0 +1,22 @@
+language: java
+jdk:
+  - openjdk21
+
+# Use Ubuntu 22.04 to get Java 21 support
+# Sudo privileges are needed for Docker
+sudo: required
+dist: jammy
+
+services:
+  - docker
+
+before_install:
+  - chmod +x gradlew
+
+cache:
+  directories:
+    - $HOME/.gradle/caches
+    - $HOME/.gradle/wrapper
+
+script:
+  - ./gradlew --no-daemon build
