@@ -197,7 +197,7 @@ object TestingFu {
       operationId = UUID.randomUUID(),
       account = account,
       phase = randomEnum(LedgerEntryPhase::class.java),
-      amount = randomBigDecimal(0.01, 999999.99),
+      amount = randomBigDecimal(0.01, 999999.99).toSevenDecimalPlaces(),
       address = randomAlphabetic(16).uppercase(),
       asset = randomAlphabetic(16).uppercase(),
       timestamp = randomInstant(),
