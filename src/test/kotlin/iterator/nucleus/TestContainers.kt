@@ -4,6 +4,7 @@ import com.redis.testcontainers.RedisContainer
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.kafka.KafkaContainer
 import org.testcontainers.utility.DockerImageName
 
 interface TestContainers {
@@ -13,9 +14,13 @@ interface TestContainers {
 
     val redisContainer: RedisContainer = RedisContainer(DockerImageName.parse("redis:8.0"))
 
+    val kafkaContainer: KafkaContainer =
+      KafkaContainer(DockerImageName.parse("apache/kafka-native:3.9.1"))
+
     init {
       postgresContainer.start()
       redisContainer.start()
+      kafkaContainer.start()
     }
 
     @JvmStatic
@@ -31,6 +36,9 @@ interface TestContainers {
       registry.add("spring.data.redis.port") { redisContainer.firstMappedPort.toString() }
       System.setProperty("SPRING_DATA_REDIS_HOST", redisContainer.host)
       System.setProperty("SPRING_DATA_REDIS_PORT", redisContainer.firstMappedPort.toString())
+      val bootstrap =
+        kafkaContainer.bootstrapServers.removePrefix("PLAINTEXT://").removePrefix("SSL://")
+      registry.add("spring.kafka.bootstrap-servers") { bootstrap }
     }
   }
 }

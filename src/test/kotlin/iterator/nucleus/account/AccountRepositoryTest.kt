@@ -5,6 +5,7 @@ import iterator.nucleus.TestingFu.aValidAccount
 import iterator.nucleus.TestingFu.aValidAccountFeature
 import iterator.nucleus.TestingFu.aValidAccountTemplate
 import iterator.nucleus.TestingFu.aValidCustomerTranche
+import iterator.nucleus.TestingFu.randomEnum
 import jakarta.persistence.EntityManager
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -26,7 +27,7 @@ class AccountRepositoryTest
       val accountTemplate = aValidAccountTemplate()
       val customerTranche = aValidCustomerTranche()
       persistAndFlush(listOf(accountTemplate, customerTranche))
-      return aValidAccount(accountTemplate, customerTranche)
+      return aValidAccount(accountTemplate = accountTemplate, customerTranche = customerTranche)
     }
 
     override fun entityClass(): Class<Account> = Account::class.java
@@ -56,5 +57,84 @@ class AccountRepositoryTest
       // then
       val f2 = featureRepository.findById(feature.id).get()
       assertThat(f2.accounts).isEmpty()
+    }
+
+    @Test
+    fun `should find account by account ID`() {
+      // given
+      val account = randomValidEntity()
+      persistAndFlush(account)
+
+      // when
+      val actual = repo.findByAccountId(account.accountId)
+
+      // then
+      assertThat(actual).usingRecursiveComparison().isEqualTo(account)
+    }
+
+    @Test
+    fun `should return null given non-existent account ID when find by account ID`() {
+      // when
+      val actual = repo.findByAccountId(UUID.randomUUID())
+
+      // then
+      assertThat(actual).isNull()
+    }
+
+    @Test
+    fun `should find by account by account ID and status`() {
+      // given
+      val account = randomValidEntity()
+      persistAndFlush(account)
+
+      // when
+      val actual = repo.findByAccountIdAndStatus(account.accountId, account.status)
+
+      // then
+      assertThat(actual).usingRecursiveComparison().isEqualTo(account)
+    }
+
+    @Test
+    fun `should return null given non-existent account ID when find by account ID and status`() {
+      // when
+      val actual =
+        repo.findByAccountIdAndStatus(UUID.randomUUID(), randomEnum(AccountStatus::class.java))
+
+      // then
+      assertThat(actual).isNull()
+    }
+
+    @Test
+    fun `should return null given wrong status when find by account ID and status`() {
+      // given
+      val account = randomValidEntity().apply { status = AccountStatus.CLOSED }
+      persistAndFlush(account)
+
+      // when
+      val actual = repo.findByAccountIdAndStatus(account.accountId, AccountStatus.OPEN)
+
+      // then
+      assertThat(actual).isNull()
+    }
+
+    @Test
+    fun `should find internal account by customerID and role`() {
+      // given
+      val account =
+        randomValidEntity().apply {
+          internal = true
+          internalAccountRole = InternalAccountRole.PROFIT_AND_LOSS
+        }
+      persistAndFlush(account)
+
+      // when
+      val actual =
+        repo.findByInternalIsTrueAndCustomerIdAndInternalAccountRole(
+          account.customerId,
+          account.internalAccountRole!!,
+        )
+
+      // then
+      assertThat(actual).usingRecursiveComparison().isEqualTo(account)
     }
   }

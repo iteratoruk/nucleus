@@ -3,14 +3,25 @@ package iterator.nucleus
 import com.thedeanda.lorem.Lorem
 import com.thedeanda.lorem.LoremIpsum
 import iterator.nucleus.account.Account
+import iterator.nucleus.account.AccountConstants
 import iterator.nucleus.account.AccountFeature
+import iterator.nucleus.account.AccountStatus
+import iterator.nucleus.account.InternalAccountRole
+import iterator.nucleus.account.feature.interest.InterestAccrualStrategy
+import iterator.nucleus.account.feature.interest.InterestApplicationFrequency
+import iterator.nucleus.account.feature.interest.InterestFeatureConfigurationProperties
+import iterator.nucleus.account.feature.interest.InterestFeatureKafkaConfigurationProperties
+import iterator.nucleus.account.feature.interest.InterestFeatureParameters
+import iterator.nucleus.account.feature.interest.InterestFeatureScheduledTaskConfigurationProperties
+import iterator.nucleus.account.feature.interest.KafkaRetryConfigurationProperties
 import iterator.nucleus.account.template.AccountTemplate
 import iterator.nucleus.customer.CustomerTranche
 import iterator.nucleus.ledger.LedgerEntry
-import iterator.nucleus.ledger.LedgerEntryType
+import iterator.nucleus.ledger.LedgerEntryPhase
 import org.apache.commons.lang3.RandomStringUtils
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -32,11 +43,14 @@ object TestingFu {
 
   fun randomBoolean(): Boolean = Random.nextBoolean()
 
-  fun randomInt(): Int = Random.nextInt()
+  fun randomShort(
+    from: Short = Short.MIN_VALUE,
+    until: Short = Short.MAX_VALUE,
+  ): Short = randomInt(from.toInt(), until.toInt()).toShort()
 
   fun randomInt(
-    from: Int,
-    until: Int,
+    from: Int = Int.MIN_VALUE,
+    until: Int = Int.MAX_VALUE,
   ): Int = if (from == until) until else Random.nextInt(from, until)
 
   fun randomPaddedInt(
@@ -60,14 +74,19 @@ object TestingFu {
     padChar: Char = '0',
   ): String = Random.nextLong(from, until).toString().padStart(padLength, padChar)
 
+  fun randomFloat(
+    from: Float = Float.MIN_VALUE,
+    to: Float = Float.MAX_VALUE,
+  ): Float = Random.nextDouble(from.toDouble(), to.toDouble()).toFloat()
+
   fun randomDouble(
-    from: Double,
-    until: Double,
+    from: Double = Double.MIN_VALUE,
+    until: Double = Double.MAX_VALUE,
   ): Double = Random.nextDouble(from, until)
 
   fun randomBigDecimal(
-    from: Double,
-    until: Double,
+    from: Double = Double.MIN_VALUE,
+    until: Double = Double.MAX_VALUE,
   ): BigDecimal =
     if (from == until) {
       from.toBigDecimal()
@@ -133,13 +152,41 @@ object TestingFu {
 
   fun aValidAccount(
     accountTemplate: AccountTemplate,
+    accountId: UUID = UUID.randomUUID(),
     customerTranche: CustomerTranche? = null,
+    status: AccountStatus = randomEnum(AccountStatus::class.java),
   ): Account =
     Account(
-      accountId = UUID.randomUUID(),
+      accountId = accountId,
+      customerId = UUID.randomUUID().toString(),
+      status = status,
       accountTemplate = accountTemplate,
       customerTranche = customerTranche,
     )
+
+  fun validAccountsWithIds(
+    numberOfAccounts: Int,
+    accountTemplate: AccountTemplate,
+    accountId: UUID = UUID.randomUUID(),
+    customerTranche: CustomerTranche? = null,
+    status: AccountStatus = randomEnum(AccountStatus::class.java),
+  ): Set<Account> =
+    (1..numberOfAccounts)
+      .map { i ->
+        aValidAccount(
+          accountTemplate = accountTemplate,
+          accountId = accountId,
+          customerTranche = customerTranche,
+          status = status,
+        ).apply { id = i.toLong() }
+      }.toSet()
+
+  fun aValidInternalAccount(role: InternalAccountRole = randomEnum(InternalAccountRole::class.java)): Account =
+    aValidAccount(aValidAccountTemplate()).apply {
+      internal = true
+      internalAccountRole = role
+      customerId = AccountConstants.ATOM_BANK_CUSTOMER_ID
+    }
 
   fun aValidCustomerTranche(): CustomerTranche = CustomerTranche(customerTrancheId = UUID.randomUUID(), displayName = randomWords(4))
 
@@ -149,7 +196,7 @@ object TestingFu {
     LedgerEntry(
       operationId = UUID.randomUUID(),
       account = account,
-      type = randomEnum(LedgerEntryType::class.java),
+      phase = randomEnum(LedgerEntryPhase::class.java),
       amount = randomBigDecimal(0.01, 999999.99),
       address = randomAlphabetic(16).uppercase(),
       asset = randomAlphabetic(16).uppercase(),
@@ -160,5 +207,43 @@ object TestingFu {
     AccountFeature(
       name = randomAlphabetic(16).uppercase(),
       config = """{"${randomWords(1).lowercase()}" : "${randomWords(1).lowercase()}"}""",
+    )
+
+  fun randomInterestFeatureConfigurationProperties(): InterestFeatureConfigurationProperties =
+    InterestFeatureConfigurationProperties(
+      scheduledTask =
+        InterestFeatureScheduledTaskConfigurationProperties(
+          cronExpression =
+            "${randomInt(0, 59)} ${randomInt(0, 59)} ${randomInt(0, 23)} * * ?",
+          effectiveTimestampHour = randomInt(0, 23),
+          effectiveTimestampMinute = randomInt(0, 59),
+          effectiveTimestampSecond = randomInt(0, 59),
+          incrementDuration = Duration.ofDays(randomLong(1, 30)),
+          accrualIncrementDuration = Duration.ofMillis(randomLong(1, 999)),
+          applicationIncrementDuration = Duration.ofSeconds(randomLong(1, 120)),
+        ),
+      kafka =
+        InterestFeatureKafkaConfigurationProperties(
+          numberOfPartitions = randomInt(from = 1),
+          replicationFactor = randomShort(from = 1),
+          retry =
+            KafkaRetryConfigurationProperties(
+              maxAttempts = randomInt(from = 2, until = 5),
+              delay = randomLong(from = 500, until = 5000),
+              multiplier = randomDouble(from = 1.0, until = 3.0),
+              maxDelay = randomLong(from = 10000, until = 30000),
+            ),
+        ),
+    )
+
+  fun randomInterestFeatureParameters(): InterestFeatureParameters =
+    InterestFeatureParameters(
+      interestRate = randomBigDecimal(0.0010000, 0.9999999),
+      bonusInterestEnabled = randomBoolean(),
+      bonusInterestRate = randomBigDecimal(0.0010000, 0.9999999),
+      interestAccrualStrategy = randomEnum(InterestAccrualStrategy::class.java),
+      interestApplicationFrequency = randomEnum(InterestApplicationFrequency::class.java),
+      interestApplicationDay = randomInt(1, 31),
+      interestApplicationMonth = randomInt(1, 12),
     )
 }

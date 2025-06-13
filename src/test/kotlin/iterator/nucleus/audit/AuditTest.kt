@@ -25,7 +25,7 @@ class AuditTest {
     val publisher = mock<ApplicationEventPublisher> {}
     val service = AuditService(publisher)
     val event =
-      NucleusAuditEvent(
+      GenericAuditEvent(
         type = randomEnumValue<NucleusAuditEventType>(),
         principal = randomAlphabetic(16),
         data = mapOf(randomAlphanumeric(8) to randomAlphanumeric(8)),
@@ -43,7 +43,7 @@ class AuditTest {
   fun `logging audit repository logs audit event using object mapper`() {
     // given
     val event =
-      NucleusAuditEvent(
+      GenericAuditEvent(
         type = randomEnumValue<NucleusAuditEventType>(),
         principal = randomAlphabetic(16),
         data = mapOf(randomAlphanumeric(8) to randomAlphanumeric(8)),

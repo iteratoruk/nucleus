@@ -17,6 +17,22 @@ spring:
           redisson:
             fallback: true
             config: redisson.yml
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    properties:
+      org:
+        quartz:
+          scheduler:
+            instanceName: NucleusScheduler
+            instanceId: AUTO
+          jobStore:
+            isClustered: true
+            clusterCheckinInterval: 20000
+          threadPool:
+            threadCount: 5
+            threadPriority: 5
 
 management:
   endpoints:
@@ -37,6 +53,27 @@ logging:
   level:
     ROOT: ERROR
     iterator.nucleus: INFO
+
+nucleus:
+  account:
+    features:
+      interest:
+        scheduled-task:
+          cron-expression: "59 59 23 * * ?"
+          effective-timestamp-hour: 23
+          effective-timestamp-minute: 59
+          effective-timestamp-second: 59
+          increment-duration: P1D
+          accrual-increment-duration: PT0.1S
+          application-increment-duration: PT2S
+        kafka:
+          number-of-partitions: 10
+          replication-factor: 3
+          retry:
+            max-attempts: 5
+            delay: 1000
+            multiplier: 2.0
+            max-delay: 30000
 
 ---
 

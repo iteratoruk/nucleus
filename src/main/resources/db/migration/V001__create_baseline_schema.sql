@@ -28,19 +28,29 @@ create table "customer_tranche"
 
 create table "account"
 (
-  "id"                  bigserial                   not null,
-  "version"             int8                        not null,
-  "created_by"          varchar(255),
-  "created_date"        timestamp(6) with time zone not null,
-  "last_modified_by"    varchar(255),
-  "last_modified_date"  timestamp(6) with time zone,
-  "account_id"          uuid                        not null,
-  "account_template_id" bigint                      not null,
-  "customer_tranche_id" bigint,
+  "id"                    bigserial                   not null,
+  "version"               int8                        not null,
+  "created_by"            varchar(255),
+  "created_date"          timestamp(6) with time zone not null,
+  "last_modified_by"      varchar(255),
+  "last_modified_date"    timestamp(6) with time zone,
+  "account_id"            uuid                        not null,
+  "customer_id"           varchar(255)                not null,
+  "status"                varchar(255)                not null,
+  "internal"              bool                        not null,
+  "internal_account_role" varchar(255),
+  "account_template_id"   bigint                      not null,
+  "customer_tranche_id"   bigint,
   primary key ("id")
 );
 
 create unique index "account_id_idx" on "account" ("account_id");
+
+create index "account_status_idx" on "account" ("status");
+
+create index "account_customer_idx" on "account" ("customer_id");
+
+create unique index "account_internal_account_idx" on "account" ("customer_id", "internal", "internal_account_role");
 
 alter table "account"
   add constraint "account_template_fk"
@@ -60,16 +70,17 @@ create table "account_feature"
   "created_date"       timestamp(6) with time zone not null,
   "last_modified_by"   varchar(255),
   "last_modified_date" timestamp(6) with time zone,
-  "name"               varchar(64) not null ,
+  "name"               varchar(64)                 not null,
   "config"             jsonb,
   primary key ("id")
 );
 
 create unique index "account_feature_name_idx" on "account_feature" ("name");
 
-create table "account_account_feature" (
-  "accounts_id" bigint not null ,
-  "features_id" bigint not null ,
+create table "account_account_feature"
+(
+  "accounts_id" bigint not null,
+  "features_id" bigint not null,
   primary key (accounts_id, features_id)
 );
 
@@ -113,7 +124,6 @@ create table "parameter_value"
   "level"              varchar(255)                not null,
   "resource_id"        varchar(255),
   "value"              text                        not null,
-  "type"               varchar(255)                not null,
   "effective_from"     timestamp with time zone    not null default current_timestamp,
   "effective_to"       timestamp with time zone,
   primary key ("id")
@@ -137,7 +147,7 @@ create table "ledger_entry"
   "operation_id"      uuid                        not null,
   "address"           varchar(255)                not null,
   "asset"             varchar(255)                not null,
-  "type"              varchar(64)                 not null,
+  "phase"             varchar(64)                 not null,
   "amount"            numeric(19, 7)              not null,
   "timestamp"         timestamp with time zone    not null default current_timestamp,
   primary key ("id")
@@ -153,6 +163,14 @@ alter table "ledger_entry"
     foreign key ("reversed_entry_id")
       references "ledger_entry";
 
-create unique index "ledger_entry_operation_idx" on "ledger_entry" ("operation_id");
+alter table "ledger_entry"
+  add constraint "ledger_entry_amount_nonzero"
+    check ("amount" <> 0);
 
-create index "ledger_entry_idx" on "ledger_entry" ("account_id", "address", "asset", "type");
+create index "ledger_entry_operation_idx" on "ledger_entry" ("operation_id");
+
+create index "ledger_entry_account_ts_idx" on "ledger_entry" ("account_id", "timestamp");
+
+create index "ledger_entry_groupby_idx" on "ledger_entry" ("address", "asset", "phase");
+
+create index "ledger_entry_account_address_asset_idx" on "ledger_entry" ("account_id", "address", "asset");

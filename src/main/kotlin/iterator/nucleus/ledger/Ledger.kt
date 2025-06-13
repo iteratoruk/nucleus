@@ -3,6 +3,8 @@ package iterator.nucleus.ledger
 import iterator.nucleus.AbstractJpaEntity
 import iterator.nucleus.AbstractJpaRepository
 import iterator.nucleus.account.Account
+import iterator.nucleus.account.AccountService
+import jakarta.persistence.CascadeType
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
@@ -13,6 +15,8 @@ import org.hibernate.annotations.CacheConcurrencyStrategy
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -22,21 +26,112 @@ import java.util.UUID
 class LedgerEntry(
   var operationId: UUID,
   @ManyToOne var account: Account,
-  @Enumerated(EnumType.STRING) var type: LedgerEntryType,
+  @Enumerated(EnumType.STRING) var phase: LedgerEntryPhase,
   var amount: BigDecimal,
   var address: String = LedgerConstants.DEFAULT_ADDRESS,
   var asset: String = LedgerConstants.DEFAULT_ASSET,
   var timestamp: Instant = Instant.now(),
-  @OneToOne var reversedEntry: LedgerEntry? = null,
+  @OneToOne(cascade = [CascadeType.PERSIST]) var reversedEntry: LedgerEntry? = null,
 ) : AbstractJpaEntity()
 
-enum class LedgerEntryType {
-  COMMITTED_CREDIT,
+@Service
+class LedgerEntryService(
+  val repo: LedgerEntryRepository,
+  val accountService: AccountService,
+) {
+  fun findCommittedBalance(
+    accountId: UUID,
+    effectiveTimestamp: Instant = Instant.now(),
+    address: String = LedgerConstants.DEFAULT_ADDRESS,
+    asset: String = LedgerConstants.DEFAULT_ASSET,
+  ): BigDecimal =
+    repo
+      .findBalancesByAccount(accountId, effectiveTimestamp)
+      .filter { address == it.address && asset == it.asset }
+      .sumOf { it.committedBalance }
+
+  fun findCommittedBalances(
+    accountId: UUID,
+    effectiveTimestamp: Instant = Instant.now(),
+    addresses: Set<String> = setOf(LedgerConstants.DEFAULT_ADDRESS),
+    asset: String = LedgerConstants.DEFAULT_ASSET,
+  ): Map<String, BigDecimal> =
+    repo
+      .findBalancesByAccount(accountId, effectiveTimestamp)
+      .filter { addresses.contains(it.address) && asset == it.asset }
+      .groupBy { it.address }
+      .mapValues { entry -> entry.value.sumOf { it.committedBalance } }
+
+  @Transactional
+  fun createTransfer(
+    fromAccount: Account,
+    fromAddress: String,
+    toAccount: Account,
+    toAddress: String,
+    amount: BigDecimal,
+    timestamp: Instant,
+  ): List<LedgerEntry> {
+    if (amount == BigDecimal.ZERO) {
+      return emptyList()
+    }
+    require(amount > BigDecimal.ZERO) { "Amount must be positive." }
+    val operationId = UUID.randomUUID()
+    val entries =
+      listOf(
+        LedgerEntry(
+          operationId = operationId,
+          account = fromAccount,
+          phase = LedgerEntryPhase.COMMITTED,
+          amount = amount.negate(),
+          address = fromAddress,
+          timestamp = timestamp,
+        ),
+        LedgerEntry(
+          operationId = operationId,
+          account = toAccount,
+          phase = LedgerEntryPhase.COMMITTED,
+          amount = amount,
+          address = toAddress,
+          timestamp = timestamp,
+        ),
+      )
+    return repo.saveAll(entries)
+  }
+
+  @Transactional
+  fun reverseOperation(
+    operationId: UUID,
+    timestamp: Instant = Instant.now(),
+  ): List<LedgerEntry> {
+    val operation = repo.findByOperationId(operationId)
+    check(operation.size == 2) {
+      "Original operation $operationId does not consist of exactly 2 entries (found ${operation.size})."
+    }
+    require(operation.all { it.reversedEntry == null }) {
+      "Operation $operationId has already been reversed."
+    }
+    val reversals =
+      operation.map {
+        LedgerEntry(
+          operationId = it.operationId,
+          account = it.account,
+          phase = it.phase,
+          amount = it.amount.negate(),
+          address = it.address,
+          asset = it.asset,
+          timestamp = timestamp,
+          reversedEntry = it,
+        )
+      }
+    return repo.saveAll(reversals)
+  }
+}
+
+enum class LedgerEntryPhase {
+  COMMITTED,
   COMMITTED_DEBIT,
-  PENDING_CREDIT,
+  PENDING,
   PENDING_DEBIT,
-  REVERSAL_CREDIT,
-  REVERSAL_DEBIT,
 }
 
 object LedgerConstants {
@@ -48,32 +143,34 @@ object LedgerConstants {
 interface LedgerEntryRepository : AbstractJpaRepository<LedgerEntry> {
   @Query(
     """
-        SELECT
-          e.address AS address,
-          e.asset   AS asset,
-          SUM(
-            CASE
-              WHEN e.type = 'COMMITTED_CREDIT'   OR e.type = 'REVERSAL_DEBIT'  THEN e.amount
-              WHEN e.type = 'COMMITTED_DEBIT'    OR e.type = 'REVERSAL_CREDIT' THEN -e.amount
-              ELSE 0
-            END
-          ) AS committedBalance,
-          SUM(
-            CASE
-              WHEN e.type = 'PENDING_CREDIT' THEN e.amount
-              WHEN e.type = 'PENDING_DEBIT'  THEN -e.amount
-              ELSE 0
-            END
-          ) AS pendingBalance
-        FROM LedgerEntry e
-        WHERE e.account.accountId = :accountId
-        GROUP BY e.address, e.asset
-        ORDER BY e.address, e.asset
-        """,
+      SELECT
+        e.address        AS address,
+        e.asset          AS asset,
+        SUM(
+          CASE
+            WHEN e.phase = 'COMMITTED' THEN e.amount
+            ELSE 0
+          END
+        ) AS committedBalance,
+        SUM(
+          CASE
+            WHEN e.phase = 'PENDING' THEN e.amount
+            ELSE 0
+          END
+        ) AS pendingBalance
+      FROM LedgerEntry e
+      WHERE e.account.accountId = :accountId
+        AND e.timestamp <= :timestamp
+      GROUP BY e.address, e.asset
+      ORDER BY e.address, e.asset
+    """,
   )
   fun findBalancesByAccount(
     @Param("accountId") accountId: UUID,
+    @Param("timestamp") timestamp: Instant = Instant.now(),
   ): List<Balance>
+
+  fun findByOperationId(operationId: UUID): List<LedgerEntry>
 }
 
 interface Balance {

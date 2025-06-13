@@ -16,6 +16,8 @@ import org.springframework.context.support.GenericApplicationContext
 import org.springframework.test.web.servlet.MockMvc
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 class LedgerEntryRepositoryTest
@@ -49,14 +51,14 @@ class LedgerEntryRepositoryTest
         LedgerEntry(
           operationId = UUID.randomUUID(),
           account = account,
-          type = LedgerEntryType.COMMITTED_CREDIT,
+          phase = LedgerEntryPhase.COMMITTED,
           amount = randomBigDecimal(10.00, 9999.99),
         )
       val anotherCredit =
         LedgerEntry(
           operationId = UUID.randomUUID(),
           account = account,
-          type = LedgerEntryType.COMMITTED_CREDIT,
+          phase = LedgerEntryPhase.COMMITTED,
           amount = randomBigDecimal(10.00, 9999.99),
         )
       // committed credit in the default address of custom asset type
@@ -64,7 +66,7 @@ class LedgerEntryRepositoryTest
         LedgerEntry(
           operationId = UUID.randomUUID(),
           account = account,
-          type = LedgerEntryType.COMMITTED_CREDIT,
+          phase = LedgerEntryPhase.COMMITTED,
           asset = customAsset,
           amount = randomBigDecimal(10.00, 9999.99),
         )
@@ -73,7 +75,7 @@ class LedgerEntryRepositoryTest
         LedgerEntry(
           operationId = UUID.randomUUID(),
           account = anotherAccount,
-          type = LedgerEntryType.COMMITTED_CREDIT,
+          phase = LedgerEntryPhase.COMMITTED,
           amount = randomBigDecimal(10.00, 9999.99),
         )
       // a committed credit in another address of default asset type
@@ -82,7 +84,7 @@ class LedgerEntryRepositoryTest
           operationId = UUID.randomUUID(),
           account = account,
           address = customAddress,
-          type = LedgerEntryType.COMMITTED_CREDIT,
+          phase = LedgerEntryPhase.COMMITTED,
           amount = randomBigDecimal(10.00, 9999.99),
         )
       // a pending credit in the default address of default asset type
@@ -90,7 +92,7 @@ class LedgerEntryRepositoryTest
         LedgerEntry(
           operationId = UUID.randomUUID(),
           account = account,
-          type = LedgerEntryType.PENDING_CREDIT,
+          phase = LedgerEntryPhase.PENDING,
           amount = randomBigDecimal(10.00, 9999.99),
         )
       // a pending credit in the default address of custom asset type
@@ -98,7 +100,7 @@ class LedgerEntryRepositoryTest
         LedgerEntry(
           operationId = UUID.randomUUID(),
           account = account,
-          type = LedgerEntryType.PENDING_CREDIT,
+          phase = LedgerEntryPhase.PENDING,
           asset = customAsset,
           amount = randomBigDecimal(10.00, 9999.99),
         )
@@ -107,34 +109,34 @@ class LedgerEntryRepositoryTest
         LedgerEntry(
           operationId = UUID.randomUUID(),
           account = account,
-          type = LedgerEntryType.COMMITTED_DEBIT,
-          amount = creditOne.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN),
+          phase = LedgerEntryPhase.COMMITTED,
+          amount = creditOne.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN).negate(),
         )
       // a committed debit in the default address of custom asset type
       val debitTwo =
         LedgerEntry(
           operationId = UUID.randomUUID(),
           account = account,
-          type = LedgerEntryType.COMMITTED_DEBIT,
+          phase = LedgerEntryPhase.COMMITTED,
           asset = customAsset,
-          amount = creditTwo.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN),
+          amount = creditTwo.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN).negate(),
         )
       // a pending debit in the default address of default asset type
       val pendingDebitOne =
         LedgerEntry(
           operationId = UUID.randomUUID(),
           account = account,
-          type = LedgerEntryType.PENDING_DEBIT,
-          amount = creditOne.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN),
+          phase = LedgerEntryPhase.PENDING,
+          amount = creditOne.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN).negate(),
         )
       // a pending debit in the default address of custom asset type
       val pendingDebitTwo =
         LedgerEntry(
           operationId = UUID.randomUUID(),
           account = account,
-          type = LedgerEntryType.PENDING_DEBIT,
+          phase = LedgerEntryPhase.PENDING,
           asset = customAsset,
-          amount = creditTwo.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN),
+          amount = creditTwo.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN).negate(),
         )
       persistAndFlush(
         listOf(
@@ -164,17 +166,22 @@ class LedgerEntryRepositoryTest
             committedBalance =
               creditOne.amount
                 .add(anotherCredit.amount)
-                .minus(debitOne.amount)
+                .minus(debitOne.amount.abs())
                 .toSevenDecimalPlaces(),
             pendingBalance =
-              pendingCreditOne.amount.minus(pendingDebitOne.amount).toSevenDecimalPlaces(),
+              pendingCreditOne.amount
+                .minus(pendingDebitOne.amount.abs())
+                .toSevenDecimalPlaces(),
           ),
           ExpectedBalance(
             address = LedgerConstants.DEFAULT_ADDRESS,
             asset = customAsset,
-            committedBalance = creditTwo.amount.minus(debitTwo.amount).toSevenDecimalPlaces(),
+            committedBalance =
+              creditTwo.amount.minus(debitTwo.amount.abs()).toSevenDecimalPlaces(),
             pendingBalance =
-              pendingCreditTwo.amount.minus(pendingDebitTwo.amount).toSevenDecimalPlaces(),
+              pendingCreditTwo.amount
+                .minus(pendingDebitTwo.amount.abs())
+                .toSevenDecimalPlaces(),
           ),
           ExpectedBalance(
             address = customAddress,
@@ -195,6 +202,98 @@ class LedgerEntryRepositoryTest
 
       // when
       assertThrows<UnsupportedOperationException> { repo.saveAndFlush(entry) }
+    }
+
+    @Test
+    fun `should find entries by operation ID`() {
+      // given
+      val accountTemplate = aValidAccountTemplate()
+      val account = aValidAccount(accountTemplate)
+      persistAndFlush(listOf(accountTemplate, account))
+
+      val opId = UUID.randomUUID()
+      // Create two entries sharing the same operationId
+      val e1 =
+        LedgerEntry(
+          operationId = opId,
+          account = account,
+          phase = LedgerEntryPhase.COMMITTED,
+          amount = BigDecimal("100.00"),
+        )
+      val e2 =
+        LedgerEntry(
+          operationId = opId,
+          account = account,
+          phase = LedgerEntryPhase.COMMITTED,
+          amount = BigDecimal("-50.00"),
+        )
+      // A third entry under a different operationId
+      val e3 = aValidLedgerEntry(account)
+      persistAndFlush(listOf(e1, e2, e3))
+
+      // when
+      val found = repo.findByOperationId(opId)
+
+      // then
+      assertThat(found).hasSize(2)
+      assertThat(found.map { it.id }).containsExactlyInAnyOrder(e1.id, e2.id)
+    }
+
+    @Test
+    fun `findBalancesByAccount should respect timestamp filter`() {
+      // given
+      val accountTemplate = aValidAccountTemplate()
+      val account = aValidAccount(accountTemplate)
+      persistAndFlush(listOf(accountTemplate, account))
+
+      val now = Instant.now().truncatedTo(ChronoUnit.MILLIS)
+      val earlier = now.minusSeconds(60)
+      val later = now.plusSeconds(60)
+
+      // Debit and credit before 'now'
+      val beforeCredit =
+        LedgerEntry(
+          operationId = UUID.randomUUID(),
+          account = account,
+          phase = LedgerEntryPhase.COMMITTED,
+          amount = BigDecimal("100.00"),
+          timestamp = earlier,
+        )
+      val beforeDebit =
+        LedgerEntry(
+          operationId = UUID.randomUUID(),
+          account = account,
+          phase = LedgerEntryPhase.COMMITTED,
+          amount = BigDecimal("-30.00"),
+          timestamp = earlier,
+        )
+      // This entry is after 'now' and should be excluded
+      val afterCredit =
+        LedgerEntry(
+          operationId = UUID.randomUUID(),
+          account = account,
+          phase = LedgerEntryPhase.COMMITTED,
+          amount = BigDecimal("200.00"),
+          timestamp = later,
+        )
+      persistAndFlush(listOf(beforeCredit, beforeDebit, afterCredit))
+
+      // when
+      val balances = repo.findBalancesByAccount(account.accountId, now)
+
+      // then
+      // Only beforeCredit (+100) and beforeDebit (-30) should be summed
+      val expectedBalance = (BigDecimal("100.00").minus(BigDecimal("30.00"))).toSevenDecimalPlaces()
+      val expected =
+        listOf(
+          ExpectedBalance(
+            address = LedgerConstants.DEFAULT_ADDRESS,
+            asset = LedgerConstants.DEFAULT_ASSET,
+            committedBalance = expectedBalance,
+            pendingBalance = BigDecimal.ZERO,
+          ),
+        )
+      assertThat(balances.map { ExpectedBalance.fromInterface(it) }).hasSameElementsAs(expected)
     }
   }
 

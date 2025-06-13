@@ -46,6 +46,7 @@ dependencies {
 	/* Spring Boot starters */
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+  implementation("org.springframework.boot:spring-boot-starter-quartz")
   implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 
@@ -67,6 +68,7 @@ dependencies {
   implementation("org.redisson:redisson-hibernate-6:3.48.0")
   implementation("org.springframework:spring-aspects")
   implementation("org.springframework.kafka:spring-kafka")
+  implementation("org.springframework.retry:spring-retry")
 
 	/* Runtime dependencies */
 	runtimeOnly("net.logstash.logback:logstash-logback-encoder:8.1")
@@ -87,6 +89,7 @@ dependencies {
   testImplementation("org.springframework.boot:spring-boot-testcontainers")
   testImplementation("org.springframework.kafka:spring-kafka-test")
   testImplementation("org.testcontainers:junit-jupiter")
+  testImplementation("org.testcontainers:kafka")
   testImplementation("org.testcontainers:postgresql")
 
   /* Test runtime dependencies */
