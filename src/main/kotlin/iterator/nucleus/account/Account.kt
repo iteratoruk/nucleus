@@ -54,7 +54,7 @@ class AccountService(
   fun findRequiredInternalAccount(internalAccountRole: InternalAccountRole): Account {
     val account =
       repo.findByInternalIsTrueAndCustomerIdAndInternalAccountRole(
-        customerId = AccountConstants.ATOM_BANK_CUSTOMER_ID,
+        customerId = AccountConstants.INTERNAL_BANK_CUSTOMER_ID,
         internalAccountRole = internalAccountRole,
       )
     requireNotNull(account) { "Internal account with role $internalAccountRole does not exist." }
@@ -82,7 +82,7 @@ enum class AccountStatus {
 }
 
 object AccountConstants {
-  const val ATOM_BANK_CUSTOMER_ID = "ATOM_BANK"
+  const val INTERNAL_BANK_CUSTOMER_ID = "INTERNAL_BANK_CUSTOMER"
 }
 
 @Repository

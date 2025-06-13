@@ -185,7 +185,7 @@ object TestingFu {
     aValidAccount(aValidAccountTemplate()).apply {
       internal = true
       internalAccountRole = role
-      customerId = AccountConstants.ATOM_BANK_CUSTOMER_ID
+      customerId = AccountConstants.INTERNAL_BANK_CUSTOMER_ID
     }
 
   fun aValidCustomerTranche(): CustomerTranche = CustomerTranche(customerTrancheId = UUID.randomUUID(), displayName = randomWords(4))

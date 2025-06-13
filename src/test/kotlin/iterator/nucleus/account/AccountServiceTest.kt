@@ -51,7 +51,7 @@ class AccountServiceTest(
     val expected = aValidInternalAccount()
     given {
       repo.findByInternalIsTrueAndCustomerIdAndInternalAccountRole(
-        customerId = eq(AccountConstants.ATOM_BANK_CUSTOMER_ID),
+        customerId = eq(AccountConstants.INTERNAL_BANK_CUSTOMER_ID),
         internalAccountRole = eq(expected.internalAccountRole!!),
       )
     }.willReturn(expected)
@@ -68,7 +68,7 @@ class AccountServiceTest(
     // given
     given {
       repo.findByInternalIsTrueAndCustomerIdAndInternalAccountRole(
-        customerId = eq(AccountConstants.ATOM_BANK_CUSTOMER_ID),
+        customerId = eq(AccountConstants.INTERNAL_BANK_CUSTOMER_ID),
         internalAccountRole = any(),
       )
     }.willReturn(null)
