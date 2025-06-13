@@ -110,7 +110,7 @@ class AccountServiceTest(
   }
 
   @Test
-  fun `should ind required account pair`() {
+  fun `should find required account pair`() {
     // given
     val template = aValidAccountTemplate()
     val first = aValidAccount(template).apply { id = 1 }
