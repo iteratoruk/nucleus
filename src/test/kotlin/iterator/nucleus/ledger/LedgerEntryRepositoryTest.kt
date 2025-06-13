@@ -10,7 +10,6 @@ import iterator.nucleus.toSevenDecimalPlaces
 import jakarta.persistence.EntityManager
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.test.web.servlet.MockMvc
@@ -194,14 +193,20 @@ class LedgerEntryRepositoryTest
     }
 
     @Test
-    fun `should not be able to update ledger entry`() {
+    fun `should not update ledger entry when saving`() {
       // given
       val entry = randomValidEntity()
       persistAndFlush(entry)
+      val originalAmount = entry.amount
       entry.amount = randomBigDecimal(10.00, 9999.99)
 
       // when
-      assertThrows<UnsupportedOperationException> { repo.saveAndFlush(entry) }
+      repo.saveAndFlush(entry)
+      clear()
+      val reloaded = repo.findById(entry.id).get()
+
+      // then
+      assertThat(reloaded.amount).isEqualTo(originalAmount)
     }
 
     @Test

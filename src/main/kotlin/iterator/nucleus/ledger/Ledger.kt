@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToOne
 import org.hibernate.annotations.Cache
 import org.hibernate.annotations.CacheConcurrencyStrategy
+import org.hibernate.annotations.Immutable
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
@@ -23,6 +24,7 @@ import java.util.UUID
 
 @Entity
 @Cache(region = "ledger-entries", usage = CacheConcurrencyStrategy.READ_ONLY)
+@Immutable
 class LedgerEntry(
   var operationId: UUID,
   @ManyToOne var account: Account,
