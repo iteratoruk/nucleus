@@ -18,10 +18,9 @@ fun interface TopicMessageTypeMapper {
 abstract class TopicTypeResolver(
   val mappings: List<TopicMessageTypeMapper>,
 ) {
-  fun resolveType(topic: String): Class<*>? {
-    val type = mappings.firstNotNullOf { it.resolveType(topic) }
-    requireNotNull(type) { "Could not resolve type for topic $topic" }
-    return type
+  fun resolveType(topic: String): Class<*> {
+    val type = mappings.firstNotNullOfOrNull { it.resolveType(topic) }
+    return type ?: throw IllegalArgumentException("Could not resolve type for topic $topic")
   }
 }
 
