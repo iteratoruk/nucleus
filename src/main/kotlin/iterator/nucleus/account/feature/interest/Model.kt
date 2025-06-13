@@ -153,8 +153,9 @@ enum class InterestApplicationFrequency {
         return true
       }
 
-      // Case 2: "Apply on X" where X > 28 and this is the last day of the month
-      if (params.interestApplicationDay > 28 && dayOfMonth == lengthOfMonth) {
+      // Case 2: "Apply on X" where X is greater than this month length
+      // (e.g. Feb 29 on non-leap year). In that situation apply on the last day
+      if (params.interestApplicationDay > lengthOfMonth && dayOfMonth == lengthOfMonth) {
         return true
       }
 
