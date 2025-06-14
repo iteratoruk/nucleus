@@ -82,3 +82,7 @@ minikube start
 kubectl apply -f k8s/minikube.yaml
 ```
 
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on committing, testing and opening pull requests.
