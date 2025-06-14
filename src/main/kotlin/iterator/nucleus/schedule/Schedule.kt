@@ -10,6 +10,7 @@ import org.quartz.JobBuilder
 import org.quartz.JobDataMap
 import org.quartz.JobDetail
 import org.quartz.JobExecutionContext
+import org.quartz.JobExecutionException
 import org.quartz.PersistJobDataAfterExecution
 import org.quartz.Trigger
 import org.quartz.TriggerBuilder
@@ -47,6 +48,12 @@ inline fun <reified T : Any> scheduledTask(
 interface ScheduledTask<T> {
   fun run(data: T): ScheduledTaskResult<T>
 }
+
+class ScheduledTaskException(
+  message: String,
+  cause: Throwable,
+  val refire: Boolean = false,
+) : IllegalStateException(message, cause)
 
 data class ScheduledTaskResult<T>(
   val status: ScheduledTaskStatus,
@@ -129,33 +136,33 @@ class QuartzScheduledJob(
     val name = jec.jobDetail.key.name
     audit.publishAuditEvent(ScheduledTaskStartedEvent(name))
     val data = jec.mergedJobDataMap
-    val result =
-      try {
-        val payloadClass = Class.forName(data.getString("payloadClass"))
-        val payload = data.getString("payload")
-        val taskData = om.readValue(payload, payloadClass)
-        val taskClass = Class.forName(name)
-        val task = ctx.getBean(taskClass) as ScheduledTask<Any>
-        task.run(taskData)
-      } catch (e: Exception) {
-        audit.publishAuditEvent(
-          ScheduledTaskFinishedEvent(
-            taskName = name,
-            status = ScheduledTaskStatus.FAILURE,
-            executionDuration = System.currentTimeMillis() - start,
-            error = e,
-          ),
-        )
-        ScheduledTaskResult(status = ScheduledTaskStatus.FAILURE)
-      }
-    val nextJson = om.writeValueAsString(result.data)
-    data.put("payload", nextJson)
-    audit.publishAuditEvent(
-      ScheduledTaskFinishedEvent(
-        taskName = name,
-        status = result.status,
-        executionDuration = System.currentTimeMillis() - start,
-      ),
-    )
+    try {
+      val payloadClass = Class.forName(data.getString("payloadClass"))
+      val payload = data.getString("payload")
+      val taskData = om.readValue(payload, payloadClass)
+      val taskClass = Class.forName(name)
+      val task = ctx.getBean(taskClass) as ScheduledTask<Any>
+      val result = task.run(taskData)
+      data.put("payload", om.writeValueAsString(result.data))
+      audit.publishAuditEvent(
+        ScheduledTaskFinishedEvent(
+          taskName = name,
+          status = result.status,
+          executionDuration = measureDuration(start),
+        ),
+      )
+    } catch (e: ScheduledTaskException) {
+      audit.publishAuditEvent(
+        ScheduledTaskFinishedEvent(
+          taskName = name,
+          status = ScheduledTaskStatus.FAILURE,
+          executionDuration = measureDuration(start),
+          error = e,
+        ),
+      )
+      throw JobExecutionException("Job $name failed", e, e.refire)
+    }
   }
+
+  private fun measureDuration(start: Long): Long = System.currentTimeMillis() - start
 }
