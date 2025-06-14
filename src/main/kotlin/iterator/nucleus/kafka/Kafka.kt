@@ -20,7 +20,8 @@ abstract class TopicTypeResolver(
 ) {
   fun resolveType(topic: String): Class<*> {
     val type = mappings.firstNotNullOfOrNull { it.resolveType(topic) }
-    return type ?: throw IllegalArgumentException("Could not resolve type for topic $topic")
+    checkNotNull(type) { "Topic $topic has no type mapping!" }
+    return type
   }
 }
 
