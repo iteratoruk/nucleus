@@ -281,6 +281,29 @@ class LedgerEntryServiceTest(
     assertThat(actual).isEqualTo(expected)
   }
 
+  @Test
+  fun `should find committed balance for the given address when find committed balance`() {
+    // given
+    val accountId = UUID.randomUUID()
+    val effectiveTimestamp = Instant.now()
+    val addr = randomAlphabetic(8).uppercase()
+    val asset = randomAlphabetic(8).uppercase()
+    val balances =
+      listOf(
+        expectedBalance(address = addr, asset = asset),
+        expectedBalance(address = addr, asset = asset),
+      )
+    given {
+      repo.findBalancesByAccount(accountId = eq(accountId), timestamp = eq(effectiveTimestamp))
+    }.willReturn(balances)
+
+    // when
+    val actual = service.findCommittedBalance(accountId, effectiveTimestamp, addr, asset)
+
+    // then
+    assertThat(actual).isEqualTo(balances.sumOf { it.committedBalance })
+  }
+
   private fun expectedBalance(
     address: String = randomAlphabetic(8).uppercase(),
     asset: String = randomAlphabetic(8).uppercase(),

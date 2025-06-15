@@ -9,7 +9,7 @@ import iterator.nucleus.audit.AuditService
 import iterator.nucleus.audit.ScheduledTaskFinishedEvent
 import iterator.nucleus.audit.ScheduledTaskStartedEvent
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.data.Percentage
+import org.assertj.core.data.Offset
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -87,7 +87,7 @@ class QuartzScheduledJobTest(
     assertThat((captor.secondValue as ScheduledTaskFinishedEvent).status).isEqualTo(result.status)
     assertThat((captor.secondValue as ScheduledTaskFinishedEvent).error).isNull()
     assertThat((captor.secondValue as ScheduledTaskFinishedEvent).executionDuration)
-      .isCloseTo(duration, Percentage.withPercentage(10.00))
+      .isCloseTo(duration, Offset.offset(10))
   }
 
   @Test
