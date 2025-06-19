@@ -6,6 +6,7 @@ import iterator.nucleus.TestingFu.aValidAccountTemplate
 import iterator.nucleus.TestingFu.aValidLedgerEntry
 import iterator.nucleus.TestingFu.randomAlphabetic
 import iterator.nucleus.TestingFu.randomBigDecimal
+import iterator.nucleus.TestingFu.randomEnum
 import iterator.nucleus.toSevenDecimalPlaces
 import jakarta.persistence.EntityManager
 import org.assertj.core.api.Assertions.assertThat
@@ -52,6 +53,7 @@ class LedgerEntryRepositoryTest
           account = account,
           phase = LedgerEntryPhase.COMMITTED,
           amount = randomBigDecimal(10.00, 9999.99),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       val anotherCredit =
         LedgerEntry(
@@ -59,6 +61,7 @@ class LedgerEntryRepositoryTest
           account = account,
           phase = LedgerEntryPhase.COMMITTED,
           amount = randomBigDecimal(10.00, 9999.99),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       // committed credit in the default address of custom asset type
       val creditTwo =
@@ -68,6 +71,7 @@ class LedgerEntryRepositoryTest
           phase = LedgerEntryPhase.COMMITTED,
           asset = customAsset,
           amount = randomBigDecimal(10.00, 9999.99),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       // a credit on another account: excluded
       val creditThree =
@@ -76,6 +80,7 @@ class LedgerEntryRepositoryTest
           account = anotherAccount,
           phase = LedgerEntryPhase.COMMITTED,
           amount = randomBigDecimal(10.00, 9999.99),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       // a committed credit in another address of default asset type
       val creditFour =
@@ -85,6 +90,7 @@ class LedgerEntryRepositoryTest
           address = customAddress,
           phase = LedgerEntryPhase.COMMITTED,
           amount = randomBigDecimal(10.00, 9999.99),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       // a pending credit in the default address of default asset type
       val pendingCreditOne =
@@ -93,6 +99,7 @@ class LedgerEntryRepositoryTest
           account = account,
           phase = LedgerEntryPhase.PENDING,
           amount = randomBigDecimal(10.00, 9999.99),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       // a pending credit in the default address of custom asset type
       val pendingCreditTwo =
@@ -102,6 +109,7 @@ class LedgerEntryRepositoryTest
           phase = LedgerEntryPhase.PENDING,
           asset = customAsset,
           amount = randomBigDecimal(10.00, 9999.99),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       // a committed debit in the default address of default asset type
       val debitOne =
@@ -110,6 +118,7 @@ class LedgerEntryRepositoryTest
           account = account,
           phase = LedgerEntryPhase.COMMITTED,
           amount = creditOne.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN).negate(),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       // a committed debit in the default address of custom asset type
       val debitTwo =
@@ -119,6 +128,7 @@ class LedgerEntryRepositoryTest
           phase = LedgerEntryPhase.COMMITTED,
           asset = customAsset,
           amount = creditTwo.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN).negate(),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       // a pending debit in the default address of default asset type
       val pendingDebitOne =
@@ -127,6 +137,7 @@ class LedgerEntryRepositoryTest
           account = account,
           phase = LedgerEntryPhase.PENDING,
           amount = creditOne.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN).negate(),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       // a pending debit in the default address of custom asset type
       val pendingDebitTwo =
@@ -136,6 +147,7 @@ class LedgerEntryRepositoryTest
           phase = LedgerEntryPhase.PENDING,
           asset = customAsset,
           amount = creditTwo.amount.divide(2.toBigDecimal(), RoundingMode.HALF_EVEN).negate(),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       persistAndFlush(
         listOf(
@@ -224,6 +236,7 @@ class LedgerEntryRepositoryTest
           account = account,
           phase = LedgerEntryPhase.COMMITTED,
           amount = BigDecimal("100.00"),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       val e2 =
         LedgerEntry(
@@ -231,6 +244,7 @@ class LedgerEntryRepositoryTest
           account = account,
           phase = LedgerEntryPhase.COMMITTED,
           amount = BigDecimal("-50.00"),
+          type = randomEnum(LedgerEntryType::class.java),
         )
       // A third entry under a different operationId
       val e3 = aValidLedgerEntry(account)
@@ -263,6 +277,7 @@ class LedgerEntryRepositoryTest
           phase = LedgerEntryPhase.COMMITTED,
           amount = BigDecimal("100.00"),
           timestamp = earlier,
+          type = randomEnum(LedgerEntryType::class.java),
         )
       val beforeDebit =
         LedgerEntry(
@@ -271,6 +286,7 @@ class LedgerEntryRepositoryTest
           phase = LedgerEntryPhase.COMMITTED,
           amount = BigDecimal("-30.00"),
           timestamp = earlier,
+          type = randomEnum(LedgerEntryType::class.java),
         )
       // This entry is after 'now' and should be excluded
       val afterCredit =
@@ -280,6 +296,7 @@ class LedgerEntryRepositoryTest
           phase = LedgerEntryPhase.COMMITTED,
           amount = BigDecimal("200.00"),
           timestamp = later,
+          type = randomEnum(LedgerEntryType::class.java),
         )
       persistAndFlush(listOf(beforeCredit, beforeDebit, afterCredit))
 

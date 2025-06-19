@@ -9,6 +9,7 @@ import iterator.nucleus.audit.InterestAccruedEvent
 import iterator.nucleus.audit.NucleusAuditEventType
 import iterator.nucleus.ledger.LedgerConstants
 import iterator.nucleus.ledger.LedgerEntryService
+import iterator.nucleus.ledger.LedgerEntryType
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.kafka.annotation.RetryableTopic
 import org.springframework.kafka.core.KafkaTemplate
@@ -41,6 +42,7 @@ class InterestAccrualListener(
       interestRate = msg.params.interestRate,
       accrualAddress = InterestFeatureAddresses.ACCRUED_INCOMING,
       msg = msg,
+      ledgerEntryType = LedgerEntryType.INTEREST_ACCRUAL,
     ) { m ->
       if (shouldAccrueBonusInterest(m)) {
         kafka.send(InterestFeatureTopics.ACCRUE_BONUS_INTEREST, m)
@@ -68,7 +70,8 @@ class InterestAccrualListener(
       interestRate = msg.params.bonusInterestRate,
       accrualAddress = InterestFeatureAddresses.BONUS_ACCRUED_INCOMING,
       msg = msg,
-      type = NucleusAuditEventType.BONUS_INTEREST_ACCRUED,
+      ledgerEntryType = LedgerEntryType.BONUS_INTEREST_ACCRUAL,
+      eventType = NucleusAuditEventType.BONUS_INTEREST_ACCRUED,
     ) { m ->
       if (shouldApplyInterest(m)) {
         forwardToCoalesceInterest(m)
@@ -109,6 +112,7 @@ class InterestAccrualListener(
           toAccount = account,
           toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
           amount = it.value,
+          type = LedgerEntryType.TRANSFER,
           timestamp = msg.accrualTimestamp,
         )
       }
@@ -127,7 +131,8 @@ class InterestAccrualListener(
     interestRate: BigDecimal,
     accrualAddress: String,
     msg: InterestAccrualMessage,
-    type: NucleusAuditEventType = NucleusAuditEventType.INTEREST_ACCRUED,
+    ledgerEntryType: LedgerEntryType,
+    eventType: NucleusAuditEventType = NucleusAuditEventType.INTEREST_ACCRUED,
     forward: (InterestAccrualMessage) -> Unit,
   ) {
     val accrued =
@@ -145,6 +150,7 @@ class InterestAccrualListener(
         toAccount = account,
         toAddress = accrualAddress,
         amount = accrued,
+        type = ledgerEntryType,
         timestamp = msg.effectiveTimestamp.plusMillis(1),
       )
       audit.publishAuditEvent(
@@ -154,7 +160,7 @@ class InterestAccrualListener(
           effectiveBalance = msg.balance,
           effectiveInterestRate = interestRate,
           totalAccrued = accrued,
-          accrualType = type,
+          accrualType = eventType,
         ),
       )
     }

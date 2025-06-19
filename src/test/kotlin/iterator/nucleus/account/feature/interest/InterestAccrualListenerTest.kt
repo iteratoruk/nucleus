@@ -15,6 +15,7 @@ import iterator.nucleus.audit.AuditService
 import iterator.nucleus.audit.InterestAccruedEvent
 import iterator.nucleus.audit.NucleusAuditEventType
 import iterator.nucleus.ledger.LedgerEntryService
+import iterator.nucleus.ledger.LedgerEntryType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -146,6 +147,7 @@ class InterestAccrualListenerTest(
         toAccount = eq(account),
         toAddress = eq(InterestFeatureAddresses.ACCRUED_INCOMING),
         amount = eq(expectedAccrual),
+        type = eq(LedgerEntryType.INTEREST_ACCRUAL),
         timestamp = eq(accrualTimestamp),
       )
     verify(audit, times(1))
@@ -212,6 +214,7 @@ class InterestAccrualListenerTest(
         toAccount = eq(account),
         toAddress = eq(InterestFeatureAddresses.ACCRUED_INCOMING),
         amount = eq(expectedAccrual),
+        type = eq(LedgerEntryType.INTEREST_ACCRUAL),
         timestamp = eq(accrualTimestamp),
       )
     verify(kafka, times(1)).send(eq(InterestFeatureTopics.ACCRUE_BONUS_INTEREST), eq(msg))
@@ -254,6 +257,7 @@ class InterestAccrualListenerTest(
         toAccount = eq(account),
         toAddress = eq(InterestFeatureAddresses.ACCRUED_INCOMING),
         amount = eq(expectedAccrual),
+        type = eq(LedgerEntryType.INTEREST_ACCRUAL),
         timestamp = eq(accrualTimestamp),
       )
     verify(kafka, times(1))
@@ -331,6 +335,7 @@ class InterestAccrualListenerTest(
         toAccount = eq(account),
         toAddress = eq(InterestFeatureAddresses.BONUS_ACCRUED_INCOMING),
         amount = eq(expectedAccrual),
+        type = eq(LedgerEntryType.BONUS_INTEREST_ACCRUAL),
         timestamp = eq(accrualTimestamp),
       )
     verify(audit, times(1))
@@ -396,6 +401,7 @@ class InterestAccrualListenerTest(
         toAccount = eq(account),
         toAddress = eq(InterestFeatureAddresses.BONUS_ACCRUED_INCOMING),
         amount = eq(expectedAccrual),
+        type = eq(LedgerEntryType.BONUS_INTEREST_ACCRUAL),
         timestamp = eq(accrualTimestamp),
       )
     verify(kafka, times(1))
@@ -452,6 +458,7 @@ class InterestAccrualListenerTest(
         toAccount = eq(account),
         toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
         amount = eq(balances[InterestFeatureAddresses.ACCRUED_INCOMING]!!),
+        type = eq(LedgerEntryType.TRANSFER),
         timestamp = eq(msg.accrualTimestamp),
       )
     verify(kafka, times(1))
@@ -507,6 +514,7 @@ class InterestAccrualListenerTest(
         toAccount = eq(account),
         toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
         amount = eq(balances[InterestFeatureAddresses.BONUS_ACCRUED_INCOMING]!!),
+        type = eq(LedgerEntryType.TRANSFER),
         timestamp = eq(msg.accrualTimestamp),
       )
     verify(kafka, times(1))
@@ -562,6 +570,7 @@ class InterestAccrualListenerTest(
         toAccount = eq(account),
         toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
         amount = eq(balances[InterestFeatureAddresses.ACCRUED_INCOMING]!!),
+        type = eq(LedgerEntryType.TRANSFER),
         timestamp = eq(msg.accrualTimestamp),
       )
     verify(ledgerService, times(1))
@@ -571,6 +580,7 @@ class InterestAccrualListenerTest(
         toAccount = eq(account),
         toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
         amount = eq(balances[InterestFeatureAddresses.BONUS_ACCRUED_INCOMING]!!),
+        type = eq(LedgerEntryType.TRANSFER),
         timestamp = eq(msg.accrualTimestamp),
       )
     verify(kafka, times(1))

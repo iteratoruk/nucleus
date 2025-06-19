@@ -9,6 +9,7 @@ import iterator.nucleus.account.AccountService
 import iterator.nucleus.account.InternalAccountRole
 import iterator.nucleus.ledger.LedgerConstants
 import iterator.nucleus.ledger.LedgerEntryService
+import iterator.nucleus.ledger.LedgerEntryType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -86,7 +87,7 @@ class InterestApplicationListenerTest(
     listener.applyInterest(msg)
 
     // then
-    verify(ledgerService, times(0)).createTransfer(any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(0)).createTransfer(any(), any(), any(), any(), any(), any(), any())
   }
 
   @Test
@@ -119,9 +120,10 @@ class InterestApplicationListenerTest(
         toAccount = eq(account),
         toAddress = eq(LedgerConstants.DEFAULT_ADDRESS),
         amount = eq("1.23".toBigDecimal()),
+        type = eq(LedgerEntryType.INTEREST_APPLICATION),
         timestamp = eq(applicationTimestamp),
       )
-    verify(ledgerService, times(1)).createTransfer(any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(1)).createTransfer(any(), any(), any(), any(), any(), any(), any())
   }
 
   @Test
@@ -156,6 +158,7 @@ class InterestApplicationListenerTest(
         toAccount = eq(account),
         toAddress = eq(LedgerConstants.DEFAULT_ADDRESS),
         amount = eq("0.12".toBigDecimal()),
+        type = eq(LedgerEntryType.INTEREST_APPLICATION),
         timestamp = eq(applicationTimestamp),
       )
     order
@@ -166,9 +169,10 @@ class InterestApplicationListenerTest(
         toAccount = eq(pnl),
         toAddress = eq(InterestFeatureAddresses.ACCRUED_OUTGOING),
         amount = eq("0.0050000".toBigDecimal()),
+        type = eq(LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT),
         timestamp = eq(applicationTimestamp),
       )
-    verify(ledgerService, times(2)).createTransfer(any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(2)).createTransfer(any(), any(), any(), any(), any(), any(), any())
   }
 
   @Test
@@ -203,6 +207,7 @@ class InterestApplicationListenerTest(
         toAccount = eq(account),
         toAddress = eq(LedgerConstants.DEFAULT_ADDRESS),
         amount = eq("0.14".toBigDecimal()),
+        type = eq(LedgerEntryType.INTEREST_APPLICATION),
         timestamp = eq(applicationTimestamp),
       )
     order
@@ -213,9 +218,10 @@ class InterestApplicationListenerTest(
         toAccount = eq(account),
         toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
         amount = eq("0.0050000".toBigDecimal()),
+        type = eq(LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT),
         timestamp = eq(applicationTimestamp),
       )
-    verify(ledgerService, times(2)).createTransfer(any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(2)).createTransfer(any(), any(), any(), any(), any(), any(), any())
   }
 
   @Test
@@ -241,7 +247,7 @@ class InterestApplicationListenerTest(
     listener.applyInterest(msg)
 
     // then: no transfers at all
-    verify(ledgerService, times(0)).createTransfer(any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(0)).createTransfer(any(), any(), any(), any(), any(), any(), any())
   }
 
   @Test
@@ -276,6 +282,7 @@ class InterestApplicationListenerTest(
         toAccount = eq(account),
         toAddress = eq(LedgerConstants.DEFAULT_ADDRESS),
         amount = eq("1001.00".toBigDecimal()),
+        type = eq(LedgerEntryType.INTEREST_APPLICATION),
         timestamp = eq(applicationTimestamp),
       )
     order
@@ -286,8 +293,9 @@ class InterestApplicationListenerTest(
         toAccount = eq(account),
         toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
         amount = eq("0.0000001".toBigDecimal()),
+        type = eq(LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT),
         timestamp = eq(applicationTimestamp),
       )
-    verify(ledgerService, times(2)).createTransfer(any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(2)).createTransfer(any(), any(), any(), any(), any(), any(), any())
   }
 }

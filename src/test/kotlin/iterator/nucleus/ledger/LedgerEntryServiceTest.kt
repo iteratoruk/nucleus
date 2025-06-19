@@ -38,6 +38,7 @@ class LedgerEntryServiceTest(
         toAccount = mock(),
         toAddress = "B",
         amount = BigDecimal.ZERO,
+        type = LedgerEntryType.TRANSFER,
         timestamp = Instant.now(),
       )
     // then
@@ -56,6 +57,7 @@ class LedgerEntryServiceTest(
         toAccount = mock(),
         toAddress = "B",
         amount = BigDecimal("-10.00"),
+        type = LedgerEntryType.TRANSFER,
         timestamp = Instant.now(),
       )
     }
@@ -82,6 +84,7 @@ class LedgerEntryServiceTest(
         toAccount = toAccount,
         toAddress = "ADDR2",
         amount = amount,
+        type = LedgerEntryType.TRANSFER,
         timestamp = now,
       )
 
@@ -123,6 +126,7 @@ class LedgerEntryServiceTest(
         account = mock(),
         phase = LedgerEntryPhase.COMMITTED,
         amount = BigDecimal("-50.00"),
+        type = LedgerEntryType.TRANSFER,
         address = "A",
         asset = "X",
         timestamp = now.minusSeconds(60),
@@ -134,6 +138,7 @@ class LedgerEntryServiceTest(
         account = mock(),
         phase = LedgerEntryPhase.COMMITTED,
         amount = BigDecimal("50.00"),
+        type = LedgerEntryType.TRANSFER,
         address = "A",
         asset = "X",
         timestamp = now.minusSeconds(60),
@@ -201,6 +206,7 @@ class LedgerEntryServiceTest(
         account = mock(),
         phase = LedgerEntryPhase.COMMITTED,
         amount = BigDecimal("20.00"),
+        type = LedgerEntryType.REVERSAL,
         address = "A",
         asset = "X",
         timestamp = Instant.now(),
@@ -210,6 +216,7 @@ class LedgerEntryServiceTest(
             account = mock(),
             phase = LedgerEntryPhase.COMMITTED,
             amount = BigDecimal("-20.00"),
+            type = LedgerEntryType.TRANSFER,
             address = "A",
             asset = "X",
             timestamp = Instant.now(),
@@ -221,6 +228,7 @@ class LedgerEntryServiceTest(
         account = mock(),
         phase = LedgerEntryPhase.COMMITTED,
         amount = BigDecimal("-20.00"),
+        type = LedgerEntryType.TRANSFER,
         address = "A",
         asset = "X",
         timestamp = Instant.now(),

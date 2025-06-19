@@ -4,6 +4,7 @@ import iterator.nucleus.account.AccountService
 import iterator.nucleus.account.InternalAccountRole
 import iterator.nucleus.ledger.LedgerConstants
 import iterator.nucleus.ledger.LedgerEntryService
+import iterator.nucleus.ledger.LedgerEntryType
 import iterator.nucleus.toTwoDecimalPlaces
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.kafka.annotation.RetryableTopic
@@ -55,6 +56,7 @@ class InterestApplicationListener(
       toAccount = account,
       toAddress = LedgerConstants.DEFAULT_ADDRESS,
       amount = rounded,
+      type = LedgerEntryType.INTEREST_APPLICATION,
       timestamp = msg.applicationTimestamp,
     )
 
@@ -69,6 +71,7 @@ class InterestApplicationListener(
           toAccount = pnl,
           toAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
           amount = diff.abs(),
+          type = LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT,
           timestamp = msg.applicationTimestamp,
         )
       } else {
@@ -79,6 +82,7 @@ class InterestApplicationListener(
           toAccount = account,
           toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
           amount = diff.abs(),
+          type = LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT,
           timestamp = msg.applicationTimestamp,
         )
       }

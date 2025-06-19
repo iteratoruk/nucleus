@@ -23,6 +23,7 @@ import iterator.nucleus.customer.CustomerTrancheRepository
 import iterator.nucleus.ledger.LedgerConstants
 import iterator.nucleus.ledger.LedgerEntry
 import iterator.nucleus.ledger.LedgerEntryService
+import iterator.nucleus.ledger.LedgerEntryType
 import iterator.nucleus.parameter.ParameterDefinition
 import iterator.nucleus.parameter.ParameterDefinitionRepository
 import iterator.nucleus.parameter.ParameterLevel
@@ -146,6 +147,7 @@ abstract class AbstractFeaturePipelineIntegrationTest
         toAccount = account,
         toAddress = LedgerConstants.DEFAULT_ADDRESS,
         amount = balance,
+        type = LedgerEntryType.TRANSFER,
         timestamp = timestamp,
       )
 

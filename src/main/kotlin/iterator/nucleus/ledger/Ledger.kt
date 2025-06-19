@@ -29,11 +29,21 @@ class LedgerEntry(
   @ManyToOne var account: Account,
   @Enumerated(EnumType.STRING) var phase: LedgerEntryPhase,
   var amount: BigDecimal,
+  @Enumerated(EnumType.STRING) var type: LedgerEntryType,
   var address: String = LedgerConstants.DEFAULT_ADDRESS,
   var asset: String = LedgerConstants.DEFAULT_ASSET,
   var timestamp: Instant = Instant.now(),
   @OneToOne(cascade = [CascadeType.PERSIST]) var reversedEntry: LedgerEntry? = null,
 ) : AbstractJpaEntity()
+
+enum class LedgerEntryType {
+  INTEREST_ACCRUAL,
+  BONUS_INTEREST_ACCRUAL,
+  ACCRUED_INTEREST_ROUNDING_SETTLEMENT,
+  INTEREST_APPLICATION,
+  REVERSAL,
+  TRANSFER,
+}
 
 @Service
 class LedgerEntryService(
@@ -62,6 +72,7 @@ class LedgerEntryService(
       .groupBy { it.address }
       .mapValues { entry -> entry.value.sumOf { it.committedBalance } }
 
+  @Suppress("LongParameterList")
   @Transactional
   fun createTransfer(
     fromAccount: Account,
@@ -69,6 +80,7 @@ class LedgerEntryService(
     toAccount: Account,
     toAddress: String,
     amount: BigDecimal,
+    type: LedgerEntryType,
     timestamp: Instant,
   ): List<LedgerEntry> {
     if (amount == BigDecimal.ZERO) {
@@ -83,6 +95,7 @@ class LedgerEntryService(
           account = fromAccount,
           phase = LedgerEntryPhase.COMMITTED,
           amount = amount.negate(),
+          type = type,
           address = fromAddress,
           timestamp = timestamp,
         ),
@@ -91,6 +104,7 @@ class LedgerEntryService(
           account = toAccount,
           phase = LedgerEntryPhase.COMMITTED,
           amount = amount,
+          type = type,
           address = toAddress,
           timestamp = timestamp,
         ),
@@ -117,6 +131,7 @@ class LedgerEntryService(
           account = it.account,
           phase = it.phase,
           amount = it.amount.negate(),
+          type = LedgerEntryType.REVERSAL,
           address = it.address,
           asset = it.asset,
           timestamp = timestamp,
@@ -126,6 +141,16 @@ class LedgerEntryService(
     return repo.saveAll(reversals)
   }
 }
+
+data class CreateTransferRequest(
+  val fromAccount: Account,
+  val fromAddress: String,
+  val toAccount: Account,
+  val toAddress: String,
+  val amount: BigDecimal,
+  val type: LedgerEntryType,
+  val timestamp: Instant,
+)
 
 enum class LedgerEntryPhase {
   COMMITTED,

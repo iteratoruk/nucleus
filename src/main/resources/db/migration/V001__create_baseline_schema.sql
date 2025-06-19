@@ -149,6 +149,7 @@ create table "ledger_entry"
   "asset"             varchar(255)                not null,
   "phase"             varchar(64)                 not null,
   "amount"            numeric(19, 7)              not null,
+  "type"              varchar(64)                 not null,
   "timestamp"         timestamp with time zone    not null default current_timestamp,
   primary key ("id")
 );
