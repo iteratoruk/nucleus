@@ -20,6 +20,7 @@ import org.springframework.boot.autoconfigure.quartz.QuartzProperties
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.data.util.ProxyUtils
 import org.springframework.scheduling.quartz.SchedulerFactoryBean
 import org.springframework.scheduling.quartz.SpringBeanJobFactory
 import org.springframework.stereotype.Component
@@ -33,13 +34,14 @@ data class ScheduledTaskDetails<T>(
   val dataClass: Class<T>,
 )
 
+@Suppress("UNCHECKED_CAST")
 inline fun <reified T : Any> scheduledTask(
   bean: ScheduledTask<T>,
   cronExpression: String,
   initialJobData: T,
 ): ScheduledTaskDetails<T> =
   ScheduledTaskDetails(
-    beanClass = bean::class.java,
+    beanClass = ProxyUtils.getUserClass(bean.javaClass) as Class<out ScheduledTask<T>>,
     cronExpression = cronExpression,
     initialJobData = initialJobData,
     dataClass = T::class.java,
@@ -100,15 +102,20 @@ class ScheduledTaskConfiguration {
     }
 
   @Bean
+  @Suppress("SpreadOperator")
   fun schedulerFactory(
     fac: AutowiringSpringBeanJobFactory,
     dataSource: DataSource,
     props: QuartzProperties,
+    jobDetails: List<JobDetail>, // ← inject your job beans
+    triggers: List<Trigger>,
   ): SchedulerFactoryBean =
     SchedulerFactoryBean().apply {
       setJobFactory(fac)
       setDataSource(dataSource)
       setQuartzProperties(props.properties.toProperties())
+      setJobDetails(*jobDetails.toTypedArray())
+      setTriggers(*triggers.toTypedArray())
     }
 }
 

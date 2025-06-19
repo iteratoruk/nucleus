@@ -134,6 +134,8 @@ spotless {
 
 testlogger {
 	showPassed = false
+  showExceptions = true
+  showFullStackTraces = true
 }
 
 dependencyCheck {

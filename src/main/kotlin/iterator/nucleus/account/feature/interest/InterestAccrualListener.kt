@@ -2,6 +2,11 @@ package iterator.nucleus.account.feature.interest
 
 import iterator.nucleus.account.AccountService
 import iterator.nucleus.account.InternalAccountRole
+import iterator.nucleus.account.feature.FeatureConstants
+import iterator.nucleus.audit.AccountProcessingPipelineFinishedEvent
+import iterator.nucleus.audit.AuditService
+import iterator.nucleus.audit.InterestAccruedEvent
+import iterator.nucleus.audit.NucleusAuditEventType
 import iterator.nucleus.ledger.LedgerConstants
 import iterator.nucleus.ledger.LedgerEntryService
 import org.springframework.kafka.annotation.KafkaListener
@@ -17,6 +22,7 @@ class InterestAccrualListener(
   val accountService: AccountService,
   val ledgerService: LedgerEntryService,
   val kafka: KafkaTemplate<String, Any>,
+  val audit: AuditService,
 ) {
   @Transactional
   @KafkaListener(topics = [InterestFeatureTopics.ACCRUE_INTEREST])
@@ -40,6 +46,8 @@ class InterestAccrualListener(
         kafka.send(InterestFeatureTopics.ACCRUE_BONUS_INTEREST, m)
       } else if (shouldApplyInterest(m)) {
         forwardToCoalesceInterest(m)
+      } else {
+        publishPipelineEndEvent(m, "ACCRUE_INTEREST")
       }
     }
 
@@ -60,9 +68,12 @@ class InterestAccrualListener(
       interestRate = msg.params.bonusInterestRate,
       accrualAddress = InterestFeatureAddresses.BONUS_ACCRUED_INCOMING,
       msg = msg,
+      type = NucleusAuditEventType.BONUS_INTEREST_ACCRUED,
     ) { m ->
       if (shouldApplyInterest(m)) {
         forwardToCoalesceInterest(m)
+      } else {
+        publishPipelineEndEvent(m, "ACCRUE_BONUS_INTEREST")
       }
     }
 
@@ -116,6 +127,7 @@ class InterestAccrualListener(
     interestRate: BigDecimal,
     accrualAddress: String,
     msg: InterestAccrualMessage,
+    type: NucleusAuditEventType = NucleusAuditEventType.INTEREST_ACCRUED,
     forward: (InterestAccrualMessage) -> Unit,
   ) {
     val accrued =
@@ -134,6 +146,16 @@ class InterestAccrualListener(
         toAddress = accrualAddress,
         amount = accrued,
         timestamp = msg.effectiveTimestamp.plusMillis(1),
+      )
+      audit.publishAuditEvent(
+        InterestAccruedEvent(
+          accountId = msg.accountId,
+          effectiveTimestamp = msg.effectiveTimestamp,
+          effectiveBalance = msg.balance,
+          effectiveInterestRate = interestRate,
+          totalAccrued = accrued,
+          accrualType = type,
+        ),
       )
     }
     forward(msg)
@@ -157,6 +179,20 @@ class InterestAccrualListener(
         accrualTimestamp = msg.accrualTimestamp,
         applicationTimestamp = msg.applicationTimestamp,
         params = msg.params,
+      ),
+    )
+  }
+
+  private fun publishPipelineEndEvent(
+    msg: InterestAccrualMessage,
+    step: String,
+  ) {
+    audit.publishAuditEvent(
+      AccountProcessingPipelineFinishedEvent(
+        processingPipelineName = FeatureConstants.INTEREST_FEATURE_NAME,
+        processingPipelineEndStep = step,
+        accountId = msg.accountId,
+        effectiveTimestamp = msg.effectiveTimestamp,
       ),
     )
   }

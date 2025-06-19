@@ -21,14 +21,18 @@ class InterestFeatureKafkaConfiguration {
 @Component
 class InterestFeatureTopicTypeMapper : TopicMessageTypeMapper {
   override fun resolveType(topic: String): Class<*>? =
-    when (topic) {
-      InterestFeatureTopics.CONFIGURE_INTEREST -> ConfigureInterestFeatureMessage::class.java
-      InterestFeatureTopics.COMMITTED_BALANCE -> GetCommittedBalanceMessage::class.java
-      InterestFeatureTopics.ACCRUE_INTEREST -> InterestAccrualMessage::class.java
-      InterestFeatureTopics.ACCRUE_BONUS_INTEREST -> InterestAccrualMessage::class.java
-      InterestFeatureTopics.COALESCE_ACCRUED_INTEREST ->
+    when {
+      topic.startsWith(InterestFeatureTopics.CONFIGURE_INTEREST) ->
+        ConfigureInterestFeatureMessage::class.java
+      topic.startsWith(InterestFeatureTopics.COMMITTED_BALANCE) ->
+        GetCommittedBalanceMessage::class.java
+      topic.startsWith(InterestFeatureTopics.ACCRUE_INTEREST) ->
+        InterestAccrualMessage::class.java
+      topic.startsWith(InterestFeatureTopics.ACCRUE_BONUS_INTEREST) ->
+        InterestAccrualMessage::class.java
+      topic.startsWith(InterestFeatureTopics.COALESCE_ACCRUED_INTEREST) ->
         CoalesceAccruedInterestMessage::class.java
-      InterestFeatureTopics.APPLY_INTEREST -> ApplyInterestMessage::class.java
+      topic.startsWith(InterestFeatureTopics.APPLY_INTEREST) -> ApplyInterestMessage::class.java
       else -> null
     }
 }

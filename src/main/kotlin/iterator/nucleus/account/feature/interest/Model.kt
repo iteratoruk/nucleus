@@ -14,11 +14,12 @@ object InterestFeatureTopics {
   const val CONFIGURE_INTEREST =
     "${FeatureConstants.PRIVATE_FEATURE_TOPIC_PREFIX}interest.configure"
   const val COMMITTED_BALANCE = "${FeatureConstants.PRIVATE_FEATURE_TOPIC_PREFIX}interest.balance"
-  const val ACCRUE_INTEREST = "${FeatureConstants.PRIVATE_FEATURE_TOPIC_PREFIX}interest.accrue"
+  const val ACCRUE_INTEREST =
+    "${FeatureConstants.PRIVATE_FEATURE_TOPIC_PREFIX}interest.standard.accrue"
   const val ACCRUE_BONUS_INTEREST =
-    "${FeatureConstants.PRIVATE_FEATURE_TOPIC_PREFIX}interest.accrue.bonus"
+    "${FeatureConstants.PRIVATE_FEATURE_TOPIC_PREFIX}interest.bonus.accrue"
   const val COALESCE_ACCRUED_INTEREST =
-    "${FeatureConstants.PRIVATE_FEATURE_TOPIC_PREFIX}interest.accrue.coalesce"
+    "${FeatureConstants.PRIVATE_FEATURE_TOPIC_PREFIX}interest.coalesce"
   const val APPLY_INTEREST = "${FeatureConstants.PRIVATE_FEATURE_TOPIC_PREFIX}interest.apply"
 }
 

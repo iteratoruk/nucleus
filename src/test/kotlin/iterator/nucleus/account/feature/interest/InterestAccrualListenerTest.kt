@@ -9,6 +9,11 @@ import iterator.nucleus.TestingFu.randomLong
 import iterator.nucleus.account.Account
 import iterator.nucleus.account.AccountService
 import iterator.nucleus.account.InternalAccountRole
+import iterator.nucleus.account.feature.FeatureConstants
+import iterator.nucleus.audit.AccountProcessingPipelineFinishedEvent
+import iterator.nucleus.audit.AuditService
+import iterator.nucleus.audit.InterestAccruedEvent
+import iterator.nucleus.audit.NucleusAuditEventType
 import iterator.nucleus.ledger.LedgerEntryService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -31,8 +36,9 @@ class InterestAccrualListenerTest(
   @Mock val accountService: AccountService,
   @Mock val ledgerService: LedgerEntryService,
   @Mock val kafka: KafkaTemplate<String, Any>,
+  @Mock val audit: AuditService,
 ) {
-  val listener = InterestAccrualListener(accountService, ledgerService, kafka)
+  val listener = InterestAccrualListener(accountService, ledgerService, kafka, audit)
 
   lateinit var now: Instant
 
@@ -89,6 +95,17 @@ class InterestAccrualListenerTest(
     listener.accrueInterest(msg)
 
     // then
+    verify(audit, times(1))
+      .publishAuditEvent(
+        eq(
+          AccountProcessingPipelineFinishedEvent(
+            processingPipelineName = FeatureConstants.INTEREST_FEATURE_NAME,
+            processingPipelineEndStep = "ACCRUE_INTEREST",
+            accountId = msg.accountId,
+            effectiveTimestamp = msg.effectiveTimestamp,
+          ),
+        ),
+      )
     verifyNoInteractions(ledgerService, kafka, accountService)
   }
 
@@ -130,6 +147,30 @@ class InterestAccrualListenerTest(
         toAddress = eq(InterestFeatureAddresses.ACCRUED_INCOMING),
         amount = eq(expectedAccrual),
         timestamp = eq(accrualTimestamp),
+      )
+    verify(audit, times(1))
+      .publishAuditEvent(
+        eq(
+          InterestAccruedEvent(
+            accountId = msg.accountId,
+            effectiveTimestamp = msg.effectiveTimestamp,
+            effectiveBalance = msg.balance,
+            effectiveInterestRate = msg.params.interestRate,
+            totalAccrued = expectedAccrual,
+            accrualType = NucleusAuditEventType.INTEREST_ACCRUED,
+          ),
+        ),
+      )
+    verify(audit, times(1))
+      .publishAuditEvent(
+        eq(
+          AccountProcessingPipelineFinishedEvent(
+            processingPipelineName = FeatureConstants.INTEREST_FEATURE_NAME,
+            processingPipelineEndStep = "ACCRUE_INTEREST",
+            accountId = msg.accountId,
+            effectiveTimestamp = msg.effectiveTimestamp,
+          ),
+        ),
       )
     verifyNoInteractions(kafka)
   }
@@ -291,6 +332,30 @@ class InterestAccrualListenerTest(
         toAddress = eq(InterestFeatureAddresses.BONUS_ACCRUED_INCOMING),
         amount = eq(expectedAccrual),
         timestamp = eq(accrualTimestamp),
+      )
+    verify(audit, times(1))
+      .publishAuditEvent(
+        eq(
+          InterestAccruedEvent(
+            accountId = msg.accountId,
+            effectiveTimestamp = msg.effectiveTimestamp,
+            effectiveBalance = msg.balance,
+            effectiveInterestRate = msg.params.bonusInterestRate,
+            totalAccrued = expectedAccrual,
+            accrualType = NucleusAuditEventType.BONUS_INTEREST_ACCRUED,
+          ),
+        ),
+      )
+    verify(audit, times(1))
+      .publishAuditEvent(
+        eq(
+          AccountProcessingPipelineFinishedEvent(
+            processingPipelineName = FeatureConstants.INTEREST_FEATURE_NAME,
+            processingPipelineEndStep = "ACCRUE_BONUS_INTEREST",
+            accountId = msg.accountId,
+            effectiveTimestamp = msg.effectiveTimestamp,
+          ),
+        ),
       )
     verifyNoInteractions(kafka)
   }

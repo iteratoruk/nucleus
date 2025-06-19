@@ -11,7 +11,9 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 import java.time.Instant
+import java.util.UUID
 
 @Service
 class AuditService(
@@ -36,6 +38,14 @@ data class GenericAuditEvent(
   val data: Map<String, Any> = emptyMap(),
   val timestamp: Instant = Instant.now(),
 ) : AbstractAuditEvent(type, principal, data, timestamp)
+
+abstract class AbstractAccountLevelAuditEvent(
+  type: NucleusAuditEventType,
+  accountId: UUID,
+  principal: String? = null,
+  data: Map<String, Any> = emptyMap(),
+  timestamp: Instant = Instant.now(),
+) : AbstractAuditEvent(type, principal, data + mapOf("accountId" to accountId), timestamp)
 
 data class ScheduledTaskStartedEvent(
   val taskName: String,
@@ -63,9 +73,47 @@ data class ScheduledTaskFinishedEvent(
         ),
   )
 
+data class InterestAccruedEvent(
+  val accountId: UUID,
+  val effectiveTimestamp: Instant,
+  val effectiveBalance: BigDecimal,
+  val effectiveInterestRate: BigDecimal,
+  val totalAccrued: BigDecimal,
+  val accrualType: NucleusAuditEventType,
+) : AbstractAccountLevelAuditEvent(
+    type = accrualType,
+    accountId = accountId,
+    data =
+      mapOf(
+        "effectiveTimestamp" to effectiveTimestamp,
+        "effectiveBalance" to effectiveBalance,
+        "effectiveInterestRate" to effectiveInterestRate,
+        "totalAccrued" to totalAccrued,
+      ),
+  )
+
+data class AccountProcessingPipelineFinishedEvent(
+  val processingPipelineName: String,
+  val processingPipelineEndStep: String,
+  val accountId: UUID,
+  val effectiveTimestamp: Instant,
+) : AbstractAccountLevelAuditEvent(
+    type = NucleusAuditEventType.ACCOUNT_PROCESSING_PIPELINE_FINISHED,
+    accountId = accountId,
+    data =
+      mapOf(
+        "processingPipelineName" to processingPipelineName,
+        "processingPipelineEndStep" to processingPipelineEndStep,
+        "effectiveTimestamp" to effectiveTimestamp,
+      ),
+  )
+
 enum class NucleusAuditEventType {
+  INTEREST_ACCRUED,
+  BONUS_INTEREST_ACCRUED,
   SCHEDULED_TASK_STARTED,
   SCHEDULED_TASK_FINISHED,
+  ACCOUNT_PROCESSING_PIPELINE_FINISHED,
 }
 
 @Component

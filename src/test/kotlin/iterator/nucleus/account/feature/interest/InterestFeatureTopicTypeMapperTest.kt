@@ -18,19 +18,43 @@ class InterestFeatureTopicTypeMapperTest {
           ConfigureInterestFeatureMessage::class.java,
         ),
         Arguments.of(
+          "${InterestFeatureTopics.CONFIGURE_INTEREST}-dlt",
+          ConfigureInterestFeatureMessage::class.java,
+        ),
+        Arguments.of(
           InterestFeatureTopics.COMMITTED_BALANCE,
+          GetCommittedBalanceMessage::class.java,
+        ),
+        Arguments.of(
+          "${InterestFeatureTopics.COMMITTED_BALANCE}-dlt",
           GetCommittedBalanceMessage::class.java,
         ),
         Arguments.of(InterestFeatureTopics.ACCRUE_INTEREST, InterestAccrualMessage::class.java),
         Arguments.of(
+          "${InterestFeatureTopics.ACCRUE_INTEREST}-dlt",
+          InterestAccrualMessage::class.java,
+        ),
+        Arguments.of(
           InterestFeatureTopics.ACCRUE_BONUS_INTEREST,
+          InterestAccrualMessage::class.java,
+        ),
+        Arguments.of(
+          "${InterestFeatureTopics.ACCRUE_BONUS_INTEREST}-dlt",
           InterestAccrualMessage::class.java,
         ),
         Arguments.of(
           InterestFeatureTopics.COALESCE_ACCRUED_INTEREST,
           CoalesceAccruedInterestMessage::class.java,
         ),
+        Arguments.of(
+          "${InterestFeatureTopics.COALESCE_ACCRUED_INTEREST}-dlt",
+          CoalesceAccruedInterestMessage::class.java,
+        ),
         Arguments.of(InterestFeatureTopics.APPLY_INTEREST, ApplyInterestMessage::class.java),
+        Arguments.of(
+          "${InterestFeatureTopics.APPLY_INTEREST}-dlt",
+          ApplyInterestMessage::class.java,
+        ),
       )
   }
 

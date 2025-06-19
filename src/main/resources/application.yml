@@ -30,6 +30,7 @@ spring:
           jobStore:
             isClustered: true
             clusterCheckinInterval: 20000
+            driverDelegateClass: org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
           threadPool:
             threadCount: 5
             threadPriority: 5
@@ -113,4 +114,20 @@ spring:
       on-profile: api-test
   jpa:
     show-sql: true
+  main:
+    allow-bean-definition-overriding: true
 
+nucleus:
+  account:
+    features:
+      interest:
+        scheduled-task:
+          cron-expression: "0 0 0 1 1 ? 2099"
+        kafka:
+          number-of-partitions: 1
+          replication-factor: 1
+          retry:
+            max-attempts: 3
+            delay: 10
+            multiplier: 1.0
+            max-delay: 10
