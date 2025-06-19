@@ -4,7 +4,6 @@ import iterator.nucleus.TestingFu.randomAlphabetic
 import iterator.nucleus.TestingFu.randomBigDecimal
 import iterator.nucleus.account.Account
 import iterator.nucleus.account.AccountService
-import iterator.nucleus.ledger.CreateTransferRequest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
