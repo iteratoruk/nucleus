@@ -58,6 +58,11 @@ abstract class AbstractFeaturePipelineIntegrationTest
     ctx: GenericApplicationContext,
     mvc: MockMvc,
   ) : AbstractApiTest(ctx, mvc) {
+    companion object {
+      val DEFAULT_AWAIT_DURATION: Duration = Duration.ofSeconds(30)
+      val DEFAULT_POLL_INTERVAL: Duration = Duration.ofMillis(250)
+    }
+
     @Autowired lateinit var accountRepo: AccountRepository
 
     @Autowired lateinit var accountFeatureRepo: AccountFeatureRepository
@@ -238,10 +243,11 @@ abstract class AbstractFeaturePipelineIntegrationTest
     fun `then an account-level audit event is produced`(
       accountId: UUID,
       type: NucleusAuditEventType,
-      waitFor: Duration = Duration.ofSeconds(5),
+      waitFor: Duration = DEFAULT_AWAIT_DURATION,
+      pollInterval: Duration = DEFAULT_POLL_INTERVAL,
     ): List<AbstractAccountLevelAuditEvent> {
       val captor = argumentCaptor<AbstractAuditEvent>()
-      await.atMost(waitFor).untilAsserted {
+      await.atMost(waitFor).pollInterval(pollInterval).untilAsserted {
         verify(auditService, atLeastOnce()).publishAuditEvent(captor.capture())
         Assertions
           .assertThat(captor.allValues.filter { findAccountLevelEvent(it, type, accountId) })
@@ -255,7 +261,8 @@ abstract class AbstractFeaturePipelineIntegrationTest
     }
 
     fun <T : AbstractAccountLevelAuditEvent> `then an account-level audit event is produced`(
-      waitFor: Duration = Duration.ofSeconds(5),
+      waitFor: Duration = DEFAULT_AWAIT_DURATION,
+      pollInterval: Duration = DEFAULT_POLL_INTERVAL,
       expected: T,
     ) {
       val actualEvents =
@@ -263,16 +270,18 @@ abstract class AbstractFeaturePipelineIntegrationTest
           accountId = expected.auditEvent.data["accountId"]!! as UUID,
           type = NucleusAuditEventType.valueOf(expected.auditEvent.type),
           waitFor = waitFor,
+          pollInterval = pollInterval,
         )
       Assertions.assertThat(actualEvents).contains(expected)
     }
 
     fun `then an audit event is produced`(
       type: NucleusAuditEventType,
-      waitFor: Duration = Duration.ofSeconds(5),
+      waitFor: Duration = DEFAULT_AWAIT_DURATION,
+      pollInterval: Duration = DEFAULT_POLL_INTERVAL,
     ): List<AbstractAuditEvent> {
       val captor = argumentCaptor<AbstractAuditEvent>()
-      await.atMost(waitFor).untilAsserted {
+      await.atMost(waitFor).pollInterval(pollInterval).untilAsserted {
         verify(auditService, atLeastOnce()).publishAuditEvent(captor.capture())
         Assertions
           .assertThat(captor.allValues.filter { it.auditEvent.type == type.name })

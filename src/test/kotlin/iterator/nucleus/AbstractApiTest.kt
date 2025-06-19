@@ -1,10 +1,14 @@
 package iterator.nucleus
 
 import iterator.nucleus.audit.AuditService
+import org.springframework.beans.factory.BeanFactory
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
+import org.springframework.context.event.ApplicationEventMulticaster
+import org.springframework.context.event.SimpleApplicationEventMulticaster
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.core.task.SyncTaskExecutor
 import org.springframework.scheduling.annotation.AsyncConfigurer
@@ -31,6 +35,9 @@ abstract class AbstractApiTest(
 @Profile(ApiTestConstants.PROFILE_NAME)
 class TestAsyncConfig : AsyncConfigurer {
   override fun getAsyncExecutor(): Executor = SyncTaskExecutor()
+
+  @Bean
+  fun applicationEventMulticaster(beanFactory: BeanFactory): ApplicationEventMulticaster = SimpleApplicationEventMulticaster(beanFactory)
 }
 
 object ApiTestConstants {
