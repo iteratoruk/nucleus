@@ -7,6 +7,7 @@ import iterator.nucleus.audit.AccountProcessingPipelineFinishedEvent
 import iterator.nucleus.audit.AuditService
 import iterator.nucleus.audit.InterestAccruedEvent
 import iterator.nucleus.audit.NucleusAuditEventType
+import iterator.nucleus.ledger.CreateTransferRequest
 import iterator.nucleus.ledger.LedgerConstants
 import iterator.nucleus.ledger.LedgerEntryService
 import iterator.nucleus.ledger.LedgerEntryType
@@ -107,13 +108,15 @@ class InterestAccrualListener(
       ).filter { it.value > BigDecimal.ZERO }
       .forEach {
         ledgerService.createTransfer(
-          fromAccount = account,
-          fromAddress = it.key,
-          toAccount = account,
-          toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
-          amount = it.value,
-          type = LedgerEntryType.TRANSFER,
-          timestamp = msg.accrualTimestamp,
+          CreateTransferRequest(
+            fromAccount = account,
+            fromAddress = it.key,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            amount = it.value,
+            type = LedgerEntryType.TRANSFER,
+            timestamp = msg.accrualTimestamp,
+          ),
         )
       }
     kafka.send(
@@ -145,13 +148,15 @@ class InterestAccrualListener(
       val account = accountService.findRequiredOpenAccount(msg.accountId)
       val pnl = accountService.findRequiredInternalAccount(InternalAccountRole.PROFIT_AND_LOSS)
       ledgerService.createTransfer(
-        fromAccount = pnl,
-        fromAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
-        toAccount = account,
-        toAddress = accrualAddress,
-        amount = accrued,
-        type = ledgerEntryType,
-        timestamp = msg.effectiveTimestamp.plusMillis(1),
+        CreateTransferRequest(
+          fromAccount = pnl,
+          fromAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
+          toAccount = account,
+          toAddress = accrualAddress,
+          amount = accrued,
+          type = ledgerEntryType,
+          timestamp = msg.effectiveTimestamp.plusMillis(1),
+        ),
       )
       audit.publishAuditEvent(
         InterestAccruedEvent(

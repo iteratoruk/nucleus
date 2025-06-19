@@ -14,6 +14,7 @@ import iterator.nucleus.audit.AccountProcessingPipelineFinishedEvent
 import iterator.nucleus.audit.AuditService
 import iterator.nucleus.audit.InterestAccruedEvent
 import iterator.nucleus.audit.NucleusAuditEventType
+import iterator.nucleus.ledger.CreateTransferRequest
 import iterator.nucleus.ledger.LedgerEntryService
 import iterator.nucleus.ledger.LedgerEntryType
 import org.junit.jupiter.api.BeforeEach
@@ -142,13 +143,17 @@ class InterestAccrualListenerTest(
     // then
     verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(pnl),
-        fromAddress = eq(InterestFeatureAddresses.ACCRUED_OUTGOING),
-        toAccount = eq(account),
-        toAddress = eq(InterestFeatureAddresses.ACCRUED_INCOMING),
-        amount = eq(expectedAccrual),
-        type = eq(LedgerEntryType.INTEREST_ACCRUAL),
-        timestamp = eq(accrualTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = pnl,
+            fromAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.ACCRUED_INCOMING,
+            amount = expectedAccrual,
+            type = LedgerEntryType.INTEREST_ACCRUAL,
+            timestamp = accrualTimestamp,
+          ),
+        ),
       )
     verify(audit, times(1))
       .publishAuditEvent(
@@ -209,13 +214,17 @@ class InterestAccrualListenerTest(
     // then
     verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(pnl),
-        fromAddress = eq(InterestFeatureAddresses.ACCRUED_OUTGOING),
-        toAccount = eq(account),
-        toAddress = eq(InterestFeatureAddresses.ACCRUED_INCOMING),
-        amount = eq(expectedAccrual),
-        type = eq(LedgerEntryType.INTEREST_ACCRUAL),
-        timestamp = eq(accrualTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = pnl,
+            fromAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.ACCRUED_INCOMING,
+            amount = expectedAccrual,
+            type = LedgerEntryType.INTEREST_ACCRUAL,
+            timestamp = accrualTimestamp,
+          ),
+        ),
       )
     verify(kafka, times(1)).send(eq(InterestFeatureTopics.ACCRUE_BONUS_INTEREST), eq(msg))
   }
@@ -252,13 +261,17 @@ class InterestAccrualListenerTest(
     // then
     verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(pnl),
-        fromAddress = eq(InterestFeatureAddresses.ACCRUED_OUTGOING),
-        toAccount = eq(account),
-        toAddress = eq(InterestFeatureAddresses.ACCRUED_INCOMING),
-        amount = eq(expectedAccrual),
-        type = eq(LedgerEntryType.INTEREST_ACCRUAL),
-        timestamp = eq(accrualTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = pnl,
+            fromAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.ACCRUED_INCOMING,
+            amount = expectedAccrual,
+            type = LedgerEntryType.INTEREST_ACCRUAL,
+            timestamp = accrualTimestamp,
+          ),
+        ),
       )
     verify(kafka, times(1))
       .send(
@@ -330,13 +343,17 @@ class InterestAccrualListenerTest(
     // then
     verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(pnl),
-        fromAddress = eq(InterestFeatureAddresses.ACCRUED_OUTGOING),
-        toAccount = eq(account),
-        toAddress = eq(InterestFeatureAddresses.BONUS_ACCRUED_INCOMING),
-        amount = eq(expectedAccrual),
-        type = eq(LedgerEntryType.BONUS_INTEREST_ACCRUAL),
-        timestamp = eq(accrualTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = pnl,
+            fromAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.BONUS_ACCRUED_INCOMING,
+            amount = expectedAccrual,
+            type = LedgerEntryType.BONUS_INTEREST_ACCRUAL,
+            timestamp = accrualTimestamp,
+          ),
+        ),
       )
     verify(audit, times(1))
       .publishAuditEvent(
@@ -396,13 +413,17 @@ class InterestAccrualListenerTest(
     // then
     verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(pnl),
-        fromAddress = eq(InterestFeatureAddresses.ACCRUED_OUTGOING),
-        toAccount = eq(account),
-        toAddress = eq(InterestFeatureAddresses.BONUS_ACCRUED_INCOMING),
-        amount = eq(expectedAccrual),
-        type = eq(LedgerEntryType.BONUS_INTEREST_ACCRUAL),
-        timestamp = eq(accrualTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = pnl,
+            fromAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.BONUS_ACCRUED_INCOMING,
+            amount = expectedAccrual,
+            type = LedgerEntryType.BONUS_INTEREST_ACCRUAL,
+            timestamp = accrualTimestamp,
+          ),
+        ),
       )
     verify(kafka, times(1))
       .send(
@@ -453,13 +474,17 @@ class InterestAccrualListenerTest(
     // then
     verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(account),
-        fromAddress = eq(InterestFeatureAddresses.ACCRUED_INCOMING),
-        toAccount = eq(account),
-        toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
-        amount = eq(balances[InterestFeatureAddresses.ACCRUED_INCOMING]!!),
-        type = eq(LedgerEntryType.TRANSFER),
-        timestamp = eq(msg.accrualTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = account,
+            fromAddress = InterestFeatureAddresses.ACCRUED_INCOMING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            amount = balances[InterestFeatureAddresses.ACCRUED_INCOMING]!!,
+            type = LedgerEntryType.TRANSFER,
+            timestamp = msg.accrualTimestamp,
+          ),
+        ),
       )
     verify(kafka, times(1))
       .send(
@@ -509,13 +534,17 @@ class InterestAccrualListenerTest(
     // then
     verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(account),
-        fromAddress = eq(InterestFeatureAddresses.BONUS_ACCRUED_INCOMING),
-        toAccount = eq(account),
-        toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
-        amount = eq(balances[InterestFeatureAddresses.BONUS_ACCRUED_INCOMING]!!),
-        type = eq(LedgerEntryType.TRANSFER),
-        timestamp = eq(msg.accrualTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = account,
+            fromAddress = InterestFeatureAddresses.BONUS_ACCRUED_INCOMING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            amount = balances[InterestFeatureAddresses.BONUS_ACCRUED_INCOMING]!!,
+            type = LedgerEntryType.TRANSFER,
+            timestamp = msg.accrualTimestamp,
+          ),
+        ),
       )
     verify(kafka, times(1))
       .send(
@@ -565,23 +594,31 @@ class InterestAccrualListenerTest(
     // then
     verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(account),
-        fromAddress = eq(InterestFeatureAddresses.ACCRUED_INCOMING),
-        toAccount = eq(account),
-        toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
-        amount = eq(balances[InterestFeatureAddresses.ACCRUED_INCOMING]!!),
-        type = eq(LedgerEntryType.TRANSFER),
-        timestamp = eq(msg.accrualTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = account,
+            fromAddress = InterestFeatureAddresses.ACCRUED_INCOMING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            amount = balances[InterestFeatureAddresses.ACCRUED_INCOMING]!!,
+            type = LedgerEntryType.TRANSFER,
+            timestamp = msg.accrualTimestamp,
+          ),
+        ),
       )
     verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(account),
-        fromAddress = eq(InterestFeatureAddresses.BONUS_ACCRUED_INCOMING),
-        toAccount = eq(account),
-        toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
-        amount = eq(balances[InterestFeatureAddresses.BONUS_ACCRUED_INCOMING]!!),
-        type = eq(LedgerEntryType.TRANSFER),
-        timestamp = eq(msg.accrualTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = account,
+            fromAddress = InterestFeatureAddresses.BONUS_ACCRUED_INCOMING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            amount = balances[InterestFeatureAddresses.BONUS_ACCRUED_INCOMING]!!,
+            type = LedgerEntryType.TRANSFER,
+            timestamp = msg.accrualTimestamp,
+          ),
+        ),
       )
     verify(kafka, times(1))
       .send(

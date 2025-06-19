@@ -7,6 +7,7 @@ import iterator.nucleus.TestingFu.randomInterestFeatureParameters
 import iterator.nucleus.account.Account
 import iterator.nucleus.account.AccountService
 import iterator.nucleus.account.InternalAccountRole
+import iterator.nucleus.ledger.CreateTransferRequest
 import iterator.nucleus.ledger.LedgerConstants
 import iterator.nucleus.ledger.LedgerEntryService
 import iterator.nucleus.ledger.LedgerEntryType
@@ -87,7 +88,7 @@ class InterestApplicationListenerTest(
     listener.applyInterest(msg)
 
     // then
-    verify(ledgerService, times(0)).createTransfer(any(), any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(0)).createTransfer(any())
   }
 
   @Test
@@ -115,15 +116,19 @@ class InterestApplicationListenerTest(
     // then: customer gets 1.23 from the accrual bucket, timestamped correctly
     verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(account),
-        fromAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
-        toAccount = eq(account),
-        toAddress = eq(LedgerConstants.DEFAULT_ADDRESS),
-        amount = eq("1.23".toBigDecimal()),
-        type = eq(LedgerEntryType.INTEREST_APPLICATION),
-        timestamp = eq(applicationTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = account,
+            fromAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            toAccount = account,
+            toAddress = LedgerConstants.DEFAULT_ADDRESS,
+            amount = "1.23".toBigDecimal(),
+            type = LedgerEntryType.INTEREST_APPLICATION,
+            timestamp = applicationTimestamp,
+          ),
+        ),
       )
-    verify(ledgerService, times(1)).createTransfer(any(), any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(1)).createTransfer(any())
   }
 
   @Test
@@ -153,26 +158,34 @@ class InterestApplicationListenerTest(
     order
       .verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(account),
-        fromAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
-        toAccount = eq(account),
-        toAddress = eq(LedgerConstants.DEFAULT_ADDRESS),
-        amount = eq("0.12".toBigDecimal()),
-        type = eq(LedgerEntryType.INTEREST_APPLICATION),
-        timestamp = eq(applicationTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = account,
+            fromAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            toAccount = account,
+            toAddress = LedgerConstants.DEFAULT_ADDRESS,
+            amount = "0.12".toBigDecimal(),
+            type = LedgerEntryType.INTEREST_APPLICATION,
+            timestamp = applicationTimestamp,
+          ),
+        ),
       )
     order
       .verify(ledgerService, times(1))
       .createTransfer(
-        fromAccount = eq(account),
-        fromAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
-        toAccount = eq(pnl),
-        toAddress = eq(InterestFeatureAddresses.ACCRUED_OUTGOING),
-        amount = eq("0.0050000".toBigDecimal()),
-        type = eq(LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT),
-        timestamp = eq(applicationTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = account,
+            fromAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            toAccount = pnl,
+            toAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
+            amount = "0.0050000".toBigDecimal(),
+            type = LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT,
+            timestamp = applicationTimestamp,
+          ),
+        ),
       )
-    verify(ledgerService, times(2)).createTransfer(any(), any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(2)).createTransfer(any())
   }
 
   @Test
@@ -202,26 +215,34 @@ class InterestApplicationListenerTest(
     order
       .verify(ledgerService)
       .createTransfer(
-        fromAccount = eq(account),
-        fromAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
-        toAccount = eq(account),
-        toAddress = eq(LedgerConstants.DEFAULT_ADDRESS),
-        amount = eq("0.14".toBigDecimal()),
-        type = eq(LedgerEntryType.INTEREST_APPLICATION),
-        timestamp = eq(applicationTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = account,
+            fromAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            toAccount = account,
+            toAddress = LedgerConstants.DEFAULT_ADDRESS,
+            amount = "0.14".toBigDecimal(),
+            type = LedgerEntryType.INTEREST_APPLICATION,
+            timestamp = applicationTimestamp,
+          ),
+        ),
       )
     order
       .verify(ledgerService)
       .createTransfer(
-        fromAccount = eq(pnl),
-        fromAddress = eq(InterestFeatureAddresses.ACCRUED_OUTGOING),
-        toAccount = eq(account),
-        toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
-        amount = eq("0.0050000".toBigDecimal()),
-        type = eq(LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT),
-        timestamp = eq(applicationTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = pnl,
+            fromAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            amount = "0.0050000".toBigDecimal(),
+            type = LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT,
+            timestamp = applicationTimestamp,
+          ),
+        ),
       )
-    verify(ledgerService, times(2)).createTransfer(any(), any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(2)).createTransfer(any())
   }
 
   @Test
@@ -247,7 +268,7 @@ class InterestApplicationListenerTest(
     listener.applyInterest(msg)
 
     // then: no transfers at all
-    verify(ledgerService, times(0)).createTransfer(any(), any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(0)).createTransfer(any())
   }
 
   @Test
@@ -277,25 +298,33 @@ class InterestApplicationListenerTest(
     order
       .verify(ledgerService)
       .createTransfer(
-        fromAccount = eq(account),
-        fromAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
-        toAccount = eq(account),
-        toAddress = eq(LedgerConstants.DEFAULT_ADDRESS),
-        amount = eq("1001.00".toBigDecimal()),
-        type = eq(LedgerEntryType.INTEREST_APPLICATION),
-        timestamp = eq(applicationTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = account,
+            fromAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            toAccount = account,
+            toAddress = LedgerConstants.DEFAULT_ADDRESS,
+            amount = "1001.00".toBigDecimal(),
+            type = LedgerEntryType.INTEREST_APPLICATION,
+            timestamp = applicationTimestamp,
+          ),
+        ),
       )
     order
       .verify(ledgerService)
       .createTransfer(
-        fromAccount = eq(pnl),
-        fromAddress = eq(InterestFeatureAddresses.ACCRUED_OUTGOING),
-        toAccount = eq(account),
-        toAddress = eq(InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING),
-        amount = eq("0.0000001".toBigDecimal()),
-        type = eq(LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT),
-        timestamp = eq(applicationTimestamp),
+        eq(
+          CreateTransferRequest(
+            fromAccount = pnl,
+            fromAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            amount = "0.0000001".toBigDecimal(),
+            type = LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT,
+            timestamp = applicationTimestamp,
+          ),
+        ),
       )
-    verify(ledgerService, times(2)).createTransfer(any(), any(), any(), any(), any(), any(), any())
+    verify(ledgerService, times(2)).createTransfer(any())
   }
 }

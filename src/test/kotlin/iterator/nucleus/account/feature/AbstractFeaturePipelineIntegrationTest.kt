@@ -20,6 +20,7 @@ import iterator.nucleus.audit.NucleusAuditEventType
 import iterator.nucleus.audit.ScheduledTaskFinishedEvent
 import iterator.nucleus.customer.CustomerTranche
 import iterator.nucleus.customer.CustomerTrancheRepository
+import iterator.nucleus.ledger.CreateTransferRequest
 import iterator.nucleus.ledger.LedgerConstants
 import iterator.nucleus.ledger.LedgerEntry
 import iterator.nucleus.ledger.LedgerEntryService
@@ -142,13 +143,15 @@ abstract class AbstractFeaturePipelineIntegrationTest
       timestamp: Instant,
     ): List<LedgerEntry> =
       ledgerService.createTransfer(
-        fromAccount = fromAccount,
-        fromAddress = LedgerConstants.DEFAULT_ADDRESS,
-        toAccount = account,
-        toAddress = LedgerConstants.DEFAULT_ADDRESS,
-        amount = balance,
-        type = LedgerEntryType.TRANSFER,
-        timestamp = timestamp,
+        CreateTransferRequest(
+          fromAccount = fromAccount,
+          fromAddress = LedgerConstants.DEFAULT_ADDRESS,
+          toAccount = account,
+          toAddress = LedgerConstants.DEFAULT_ADDRESS,
+          amount = balance,
+          type = LedgerEntryType.TRANSFER,
+          timestamp = timestamp,
+        ),
       )
 
     fun `create account feature`(name: String): AccountFeature = accountFeatureRepo.save(AccountFeature(name = name))
