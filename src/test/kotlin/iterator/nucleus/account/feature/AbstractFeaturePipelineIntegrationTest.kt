@@ -1,4 +1,4 @@
-package iterator.nucleus.account.feature.interest
+package iterator.nucleus.account.feature
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import iterator.nucleus.AbstractApiTest
@@ -31,7 +31,7 @@ import iterator.nucleus.parameter.ParameterValueRepository
 import iterator.nucleus.schedule.ScheduledTask
 import iterator.nucleus.schedule.ScheduledTaskStatus
 import iterator.nucleus.toSevenDecimalPlaces
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.BeforeEach
 import org.mockito.kotlin.argumentCaptor
@@ -227,7 +227,8 @@ abstract class AbstractFeaturePipelineIntegrationTest
         taskFinishedEvents.filterIsInstance<ScheduledTaskFinishedEvent>().firstOrNull {
           it.status == status && it.taskName == task.name
         }
-      assertThat(taskFinishedEvent)
+      Assertions
+        .assertThat(taskFinishedEvent)
         .describedAs("Task finished event not found for task: $task")
         .isNotNull
     }
@@ -242,7 +243,8 @@ abstract class AbstractFeaturePipelineIntegrationTest
       val captor = argumentCaptor<AbstractAuditEvent>()
       await.atMost(waitFor).untilAsserted {
         verify(auditService, atLeastOnce()).publishAuditEvent(captor.capture())
-        assertThat(captor.allValues.filter { findAccountLevelEvent(it, type, accountId) })
+        Assertions
+          .assertThat(captor.allValues.filter { findAccountLevelEvent(it, type, accountId) })
           .describedAs(
             "No account-level audit event found for account: $accountId and type: $type.",
           ).isNotEmpty
@@ -262,7 +264,7 @@ abstract class AbstractFeaturePipelineIntegrationTest
           type = NucleusAuditEventType.valueOf(expected.auditEvent.type),
           waitFor = waitFor,
         )
-      assertThat(actualEvents).contains(expected)
+      Assertions.assertThat(actualEvents).contains(expected)
     }
 
     fun `then an audit event is produced`(
@@ -272,7 +274,8 @@ abstract class AbstractFeaturePipelineIntegrationTest
       val captor = argumentCaptor<AbstractAuditEvent>()
       await.atMost(waitFor).untilAsserted {
         verify(auditService, atLeastOnce()).publishAuditEvent(captor.capture())
-        assertThat(captor.allValues.filter { it.auditEvent.type == type.name })
+        Assertions
+          .assertThat(captor.allValues.filter { it.auditEvent.type == type.name })
           .describedAs("No audit event found for type: $type.")
           .isNotEmpty
       }
@@ -293,7 +296,7 @@ abstract class AbstractFeaturePipelineIntegrationTest
           addresses = setOf(address),
           asset = asset,
         )
-      assertThat(actualBalance[address]).isEqualTo(balance)
+      Assertions.assertThat(actualBalance[address]).isEqualTo(balance)
     }
 
     private fun findAccountLevelEvent(

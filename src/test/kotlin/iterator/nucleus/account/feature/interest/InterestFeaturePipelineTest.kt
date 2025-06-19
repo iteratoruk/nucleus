@@ -4,6 +4,7 @@ import iterator.nucleus.TestingFu.randomBigDecimal
 import iterator.nucleus.account.Account
 import iterator.nucleus.account.AccountFeature
 import iterator.nucleus.account.InternalAccountRole
+import iterator.nucleus.account.feature.AbstractFeaturePipelineIntegrationTest
 import iterator.nucleus.account.feature.FeatureConstants
 import iterator.nucleus.account.template.AccountTemplate
 import iterator.nucleus.audit.AccountProcessingPipelineFinishedEvent
