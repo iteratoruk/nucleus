@@ -72,41 +72,32 @@ class LedgerEntryService(
       .groupBy { it.address }
       .mapValues { entry -> entry.value.sumOf { it.committedBalance } }
 
-  @Suppress("LongParameterList")
   @Transactional
-  fun createTransfer(
-    fromAccount: Account,
-    fromAddress: String,
-    toAccount: Account,
-    toAddress: String,
-    amount: BigDecimal,
-    type: LedgerEntryType,
-    timestamp: Instant,
-  ): List<LedgerEntry> {
-    if (amount == BigDecimal.ZERO) {
+  fun createTransfer(request: CreateTransferRequest): List<LedgerEntry> {
+    if (request.amount == BigDecimal.ZERO) {
       return emptyList()
     }
-    require(amount > BigDecimal.ZERO) { "Amount must be positive." }
+    require(request.amount > BigDecimal.ZERO) { "Amount must be positive." }
     val operationId = UUID.randomUUID()
     val entries =
       listOf(
         LedgerEntry(
           operationId = operationId,
-          account = fromAccount,
+          account = request.fromAccount,
           phase = LedgerEntryPhase.COMMITTED,
-          amount = amount.negate(),
-          type = type,
-          address = fromAddress,
-          timestamp = timestamp,
+          amount = request.amount.negate(),
+          type = request.type,
+          address = request.fromAddress,
+          timestamp = request.timestamp,
         ),
         LedgerEntry(
           operationId = operationId,
-          account = toAccount,
+          account = request.toAccount,
           phase = LedgerEntryPhase.COMMITTED,
-          amount = amount,
-          type = type,
-          address = toAddress,
-          timestamp = timestamp,
+          amount = request.amount,
+          type = request.type,
+          address = request.toAddress,
+          timestamp = request.timestamp,
         ),
       )
     return repo.saveAll(entries)

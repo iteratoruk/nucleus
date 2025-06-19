@@ -3,6 +3,7 @@ package iterator.nucleus.account.feature.interest
 import iterator.nucleus.account.AccountService
 import iterator.nucleus.account.InternalAccountRole
 import iterator.nucleus.ledger.LedgerConstants
+import iterator.nucleus.ledger.CreateTransferRequest
 import iterator.nucleus.ledger.LedgerEntryService
 import iterator.nucleus.ledger.LedgerEntryType
 import iterator.nucleus.toTwoDecimalPlaces
@@ -51,13 +52,15 @@ class InterestApplicationListener(
 
     // 4. transfer rounded amount from the accrual bucket to the customer account
     ledgerService.createTransfer(
-      fromAccount = account,
-      fromAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
-      toAccount = account,
-      toAddress = LedgerConstants.DEFAULT_ADDRESS,
-      amount = rounded,
-      type = LedgerEntryType.INTEREST_APPLICATION,
-      timestamp = msg.applicationTimestamp,
+      CreateTransferRequest(
+        fromAccount = account,
+        fromAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+        toAccount = account,
+        toAddress = LedgerConstants.DEFAULT_ADDRESS,
+        amount = rounded,
+        type = LedgerEntryType.INTEREST_APPLICATION,
+        timestamp = msg.applicationTimestamp,
+      ),
     )
 
     // 5. compute and apply rounding difference via P&L bucket
@@ -66,24 +69,28 @@ class InterestApplicationListener(
       if (diff > BigDecimal.ZERO) {
         // return excess: debit customer, credit P&L outgoing
         ledgerService.createTransfer(
-          fromAccount = account,
-          fromAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
-          toAccount = pnl,
-          toAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
-          amount = diff.abs(),
-          type = LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT,
-          timestamp = msg.applicationTimestamp,
+          CreateTransferRequest(
+            fromAccount = account,
+            fromAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            toAccount = pnl,
+            toAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
+            amount = diff.abs(),
+            type = LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT,
+            timestamp = msg.applicationTimestamp,
+          ),
         )
       } else {
         // top-up shortfall: debit P&L outgoing, credit customer
         ledgerService.createTransfer(
-          fromAccount = pnl,
-          fromAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
-          toAccount = account,
-          toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
-          amount = diff.abs(),
-          type = LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT,
-          timestamp = msg.applicationTimestamp,
+          CreateTransferRequest(
+            fromAccount = pnl,
+            fromAddress = InterestFeatureAddresses.ACCRUED_OUTGOING,
+            toAccount = account,
+            toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
+            amount = diff.abs(),
+            type = LedgerEntryType.ACCRUED_INTEREST_ROUNDING_SETTLEMENT,
+            timestamp = msg.applicationTimestamp,
+          ),
         )
       }
     }

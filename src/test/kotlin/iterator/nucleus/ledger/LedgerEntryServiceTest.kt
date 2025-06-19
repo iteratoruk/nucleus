@@ -4,6 +4,7 @@ import iterator.nucleus.TestingFu.randomAlphabetic
 import iterator.nucleus.TestingFu.randomBigDecimal
 import iterator.nucleus.account.Account
 import iterator.nucleus.account.AccountService
+import iterator.nucleus.ledger.CreateTransferRequest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -33,13 +34,15 @@ class LedgerEntryServiceTest(
     // when
     val result =
       service.createTransfer(
-        fromAccount = mock(),
-        fromAddress = "A",
-        toAccount = mock(),
-        toAddress = "B",
-        amount = BigDecimal.ZERO,
-        type = LedgerEntryType.TRANSFER,
-        timestamp = Instant.now(),
+        CreateTransferRequest(
+          fromAccount = mock(),
+          fromAddress = "A",
+          toAccount = mock(),
+          toAddress = "B",
+          amount = BigDecimal.ZERO,
+          type = LedgerEntryType.TRANSFER,
+          timestamp = Instant.now(),
+        ),
       )
     // then
     assertEquals(emptyList(), result)
@@ -52,13 +55,15 @@ class LedgerEntryServiceTest(
     // when / then
     assertThrows<IllegalArgumentException> {
       service.createTransfer(
-        fromAccount = mock(),
-        fromAddress = "A",
-        toAccount = mock(),
-        toAddress = "B",
-        amount = BigDecimal("-10.00"),
-        type = LedgerEntryType.TRANSFER,
-        timestamp = Instant.now(),
+        CreateTransferRequest(
+          fromAccount = mock(),
+          fromAddress = "A",
+          toAccount = mock(),
+          toAddress = "B",
+          amount = BigDecimal("-10.00"),
+          type = LedgerEntryType.TRANSFER,
+          timestamp = Instant.now(),
+        ),
       )
     }
     verify(repo, never()).saveAll(any<Iterable<LedgerEntry>>())
@@ -79,13 +84,15 @@ class LedgerEntryServiceTest(
     // when
     val result =
       service.createTransfer(
-        fromAccount = fromAccount,
-        fromAddress = "ADDR1",
-        toAccount = toAccount,
-        toAddress = "ADDR2",
-        amount = amount,
-        type = LedgerEntryType.TRANSFER,
-        timestamp = now,
+        CreateTransferRequest(
+          fromAccount = fromAccount,
+          fromAddress = "ADDR1",
+          toAccount = toAccount,
+          toAddress = "ADDR2",
+          amount = amount,
+          type = LedgerEntryType.TRANSFER,
+          timestamp = now,
+        ),
       )
 
     // then: we expect exactly two entries
