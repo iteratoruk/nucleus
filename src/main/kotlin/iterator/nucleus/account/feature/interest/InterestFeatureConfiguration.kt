@@ -1,5 +1,6 @@
 package iterator.nucleus.account.feature.interest
 
+import iterator.nucleus.kafka.KafkaConfigurationProperties
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
@@ -12,7 +13,7 @@ class InterestFeatureConfiguration
 @ConfigurationProperties(prefix = "nucleus.account.features.interest")
 data class InterestFeatureConfigurationProperties(
   val scheduledTask: InterestFeatureScheduledTaskConfigurationProperties,
-  val kafka: InterestFeatureKafkaConfigurationProperties,
+  val kafka: KafkaConfigurationProperties,
 )
 
 data class InterestFeatureScheduledTaskConfigurationProperties(
@@ -23,17 +24,4 @@ data class InterestFeatureScheduledTaskConfigurationProperties(
   val incrementDuration: Duration,
   val accrualIncrementDuration: Duration,
   val applicationIncrementDuration: Duration,
-)
-
-data class InterestFeatureKafkaConfigurationProperties(
-  val numberOfPartitions: Int,
-  val replicationFactor: Short,
-  val retry: KafkaRetryConfigurationProperties,
-)
-
-data class KafkaRetryConfigurationProperties(
-  val maxAttempts: Int,
-  val delay: Long,
-  val multiplier: Double,
-  val maxDelay: Long,
 )

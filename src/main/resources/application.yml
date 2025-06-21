@@ -75,6 +75,15 @@ nucleus:
             delay: 1000
             multiplier: 2.0
             max-delay: 30000
+  ledger:
+    kafka:
+      number-of-partitions: 10
+      replication-factor: 3
+      retry:
+        max-attempts: 5
+        delay: 1000
+        multiplier: 2.0
+        max-delay: 30000
 
 ---
 
@@ -131,3 +140,12 @@ nucleus:
             delay: 10
             multiplier: 1.0
             max-delay: 10
+  ledger:
+    kafka:
+      number-of-partitions: 1
+      replication-factor: 1
+      retry:
+        max-attempts: 3
+        delay: 10
+        multiplier: 1.0
+        max-delay: 10

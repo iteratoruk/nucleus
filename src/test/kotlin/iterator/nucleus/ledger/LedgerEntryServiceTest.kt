@@ -1,9 +1,11 @@
 package iterator.nucleus.ledger
 
+import iterator.nucleus.TestingFu.aValidAccount
+import iterator.nucleus.TestingFu.aValidAccountTemplate
 import iterator.nucleus.TestingFu.randomAlphabetic
 import iterator.nucleus.TestingFu.randomBigDecimal
 import iterator.nucleus.account.Account
-import iterator.nucleus.account.AccountService
+import iterator.nucleus.truncatedToPostgresAccuracy
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -11,11 +13,16 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.given
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
+import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.kafka.core.KafkaTemplate
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -24,9 +31,9 @@ import kotlin.test.assertEquals
 @ExtendWith(MockitoExtension::class)
 class LedgerEntryServiceTest(
   @Mock val repo: LedgerEntryRepository,
-  @Mock val accounts: AccountService,
+  @Mock val kafka: KafkaTemplate<String, Any>,
 ) {
-  val service = LedgerEntryService(repo)
+  val service = LedgerEntryService(repo, kafka)
 
   @Test
   fun `createTransfer should return empty list when amount is zero`() {
@@ -117,6 +124,61 @@ class LedgerEntryServiceTest(
 
     // verify repo.saveAll was called with exactly this list
     verify(repo).saveAll(eq(result))
+  }
+
+  @Test
+  fun `createTransfer should publish withdrawal message given withdrawal type`() {
+    // given
+    val template = aValidAccountTemplate()
+    val request =
+      CreateTransferRequest(
+        fromAccount = aValidAccount(template),
+        fromAddress = randomAlphabetic(8).uppercase(),
+        toAccount = aValidAccount(template),
+        toAddress = randomAlphabetic(8).uppercase(),
+        amount = randomBigDecimal(10.00, 100.00),
+        type = LedgerEntryType.WITHDRAWAL,
+        timestamp = Instant.now().truncatedToPostgresAccuracy(),
+      )
+
+    // when
+    service.createTransfer(request)
+
+    // then
+    val captor = argumentCaptor<Iterable<LedgerEntry>>()
+    verify(repo).saveAll(captor.capture())
+    val entry: LedgerEntry = captor.firstValue.toList().first()
+    val expected =
+      WithdrawalMessage(
+        accountId = request.fromAccount.accountId,
+        operationId = entry.operationId,
+        timestamp = request.timestamp,
+      )
+    verify(kafka, times(1)).send(eq(LedgerTopics.WITHDRAWALS), eq(expected))
+  }
+
+  @Test
+  fun `createTransfer should not publish withdrawal message given withdrawal type when save to repo fails`() {
+    // given
+    val template = aValidAccountTemplate()
+    val request =
+      CreateTransferRequest(
+        fromAccount = aValidAccount(template),
+        fromAddress = randomAlphabetic(8).uppercase(),
+        toAccount = aValidAccount(template),
+        toAddress = randomAlphabetic(8).uppercase(),
+        amount = randomBigDecimal(10.00, 100.00),
+        type = LedgerEntryType.WITHDRAWAL,
+        timestamp = Instant.now().truncatedToPostgresAccuracy(),
+      )
+    given { repo.saveAll(any<Iterable<LedgerEntry>>()) }
+      .willThrow(DataIntegrityViolationException("test"))
+
+    // when
+    assertThrows<DataIntegrityViolationException> { service.createTransfer(request) }
+
+    // then
+    verifyNoInteractions(kafka)
   }
 
   @Test

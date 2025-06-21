@@ -15,6 +15,15 @@ fun interface TopicMessageTypeMapper {
   fun resolveType(topic: String): Class<*>?
 }
 
+open class RegexTopicMessageTypeMapper(
+  val mappings: Map<String, Class<*>>,
+) : TopicMessageTypeMapper {
+  private val regexes: Map<Regex, Class<*>> =
+    mappings.map { Regex("^${it.key.replace(".", "\\.")}.*$") to it.value }.toMap()
+
+  override fun resolveType(topic: String): Class<*>? = regexes.filter { it.key.matches(topic) }.firstNotNullOfOrNull { it.value }
+}
+
 abstract class TopicTypeResolver(
   val mappings: List<TopicMessageTypeMapper>,
 ) {
@@ -97,3 +106,16 @@ object KafkaConfigurationUtils {
 object KafkaConstants {
   const val PRIVATE_TOPIC_PREFIX = "nucleus.private."
 }
+
+data class KafkaRetryConfigurationProperties(
+  val maxAttempts: Int,
+  val delay: Long,
+  val multiplier: Double,
+  val maxDelay: Long,
+)
+
+data class KafkaConfigurationProperties(
+  val numberOfPartitions: Int,
+  val replicationFactor: Short,
+  val retry: KafkaRetryConfigurationProperties,
+)

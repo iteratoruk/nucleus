@@ -1,7 +1,7 @@
 package iterator.nucleus.account.feature.interest
 
 import iterator.nucleus.kafka.KafkaConfigurationUtils
-import iterator.nucleus.kafka.TopicMessageTypeMapper
+import iterator.nucleus.kafka.RegexTopicMessageTypeMapper
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.core.KafkaAdmin.NewTopics
@@ -19,20 +19,17 @@ class InterestFeatureKafkaConfiguration {
 }
 
 @Component
-class InterestFeatureTopicTypeMapper : TopicMessageTypeMapper {
-  override fun resolveType(topic: String): Class<*>? =
-    when {
-      topic.startsWith(InterestFeatureTopics.CONFIGURE_INTEREST) ->
-        ConfigureInterestFeatureMessage::class.java
-      topic.startsWith(InterestFeatureTopics.COMMITTED_BALANCE) ->
-        GetCommittedBalanceMessage::class.java
-      topic.startsWith(InterestFeatureTopics.ACCRUE_INTEREST) ->
-        InterestAccrualMessage::class.java
-      topic.startsWith(InterestFeatureTopics.ACCRUE_BONUS_INTEREST) ->
-        InterestAccrualMessage::class.java
-      topic.startsWith(InterestFeatureTopics.COALESCE_ACCRUED_INTEREST) ->
-        CoalesceAccruedInterestMessage::class.java
-      topic.startsWith(InterestFeatureTopics.APPLY_INTEREST) -> ApplyInterestMessage::class.java
-      else -> null
-    }
-}
+class InterestFeatureTopicTypeMapper :
+  RegexTopicMessageTypeMapper(
+    mappings =
+      mapOf(
+        InterestFeatureTopics.CONFIGURE_INTEREST to
+          ConfigureInterestFeatureMessage::class.java,
+        InterestFeatureTopics.COMMITTED_BALANCE to GetCommittedBalanceMessage::class.java,
+        InterestFeatureTopics.ACCRUE_INTEREST to InterestAccrualMessage::class.java,
+        InterestFeatureTopics.ACCRUE_BONUS_INTEREST to InterestAccrualMessage::class.java,
+        InterestFeatureTopics.COALESCE_ACCRUED_INTEREST to
+          CoalesceAccruedInterestMessage::class.java,
+        InterestFeatureTopics.APPLY_INTEREST to ApplyInterestMessage::class.java,
+      ),
+  )

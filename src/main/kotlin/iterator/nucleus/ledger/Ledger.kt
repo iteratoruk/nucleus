@@ -1,5 +1,6 @@
 package iterator.nucleus.ledger
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import iterator.nucleus.AbstractJpaEntity
 import iterator.nucleus.AbstractJpaRepository
 import iterator.nucleus.account.Account
@@ -14,6 +15,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy
 import org.hibernate.annotations.Immutable
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Repository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -43,11 +45,38 @@ enum class LedgerEntryType {
   INTEREST_APPLICATION,
   REVERSAL,
   TRANSFER,
+  WITHDRAWAL {
+    override fun maybePublishSuccessfulOperation(
+      kafka: KafkaTemplate<String, Any>,
+      request: CreateTransferRequest,
+      operationId: UUID,
+    ) {
+      kafka.send(
+        LedgerTopics.WITHDRAWALS,
+        WithdrawalMessage(
+          accountId = request.fromAccount.accountId,
+          operationId = operationId,
+          timestamp = request.timestamp,
+        ),
+      )
+    }
+  },
+  ;
+
+  @JsonIgnore
+  open fun maybePublishSuccessfulOperation(
+    kafka: KafkaTemplate<String, Any>,
+    request: CreateTransferRequest,
+    operationId: UUID,
+  ) {
+    // do nothing
+  }
 }
 
 @Service
 class LedgerEntryService(
   val repo: LedgerEntryRepository,
+  val kafka: KafkaTemplate<String, Any>,
 ) {
   fun findCommittedBalance(
     accountId: UUID,
@@ -100,7 +129,9 @@ class LedgerEntryService(
           timestamp = request.timestamp,
         ),
       )
-    return repo.saveAll(entries)
+    val saved = repo.saveAll(entries)
+    request.type.maybePublishSuccessfulOperation(kafka, request, operationId)
+    return saved
   }
 
   @Transactional

@@ -10,12 +10,13 @@ import iterator.nucleus.account.InternalAccountRole
 import iterator.nucleus.account.feature.interest.InterestAccrualStrategy
 import iterator.nucleus.account.feature.interest.InterestApplicationFrequency
 import iterator.nucleus.account.feature.interest.InterestFeatureConfigurationProperties
-import iterator.nucleus.account.feature.interest.InterestFeatureKafkaConfigurationProperties
 import iterator.nucleus.account.feature.interest.InterestFeatureParameters
 import iterator.nucleus.account.feature.interest.InterestFeatureScheduledTaskConfigurationProperties
-import iterator.nucleus.account.feature.interest.KafkaRetryConfigurationProperties
 import iterator.nucleus.account.template.AccountTemplate
 import iterator.nucleus.customer.CustomerTranche
+import iterator.nucleus.kafka.KafkaConfigurationProperties
+import iterator.nucleus.kafka.KafkaRetryConfigurationProperties
+import iterator.nucleus.ledger.LedgerConfigurationProperties
 import iterator.nucleus.ledger.LedgerEntry
 import iterator.nucleus.ledger.LedgerEntryPhase
 import iterator.nucleus.ledger.LedgerEntryType
@@ -224,17 +225,19 @@ object TestingFu {
           accrualIncrementDuration = Duration.ofMillis(randomLong(1, 999)),
           applicationIncrementDuration = Duration.ofSeconds(randomLong(1, 120)),
         ),
-      kafka =
-        InterestFeatureKafkaConfigurationProperties(
-          numberOfPartitions = randomInt(from = 1),
-          replicationFactor = randomShort(from = 1),
-          retry =
-            KafkaRetryConfigurationProperties(
-              maxAttempts = randomInt(from = 2, until = 5),
-              delay = randomLong(from = 500, until = 5000),
-              multiplier = randomDouble(from = 1.0, until = 3.0),
-              maxDelay = randomLong(from = 10000, until = 30000),
-            ),
+      kafka = randomKafkaConfigurationProperties(),
+    )
+
+  fun randomKafkaConfigurationProperties(): KafkaConfigurationProperties =
+    KafkaConfigurationProperties(
+      numberOfPartitions = randomInt(from = 1),
+      replicationFactor = randomShort(from = 1),
+      retry =
+        KafkaRetryConfigurationProperties(
+          maxAttempts = randomInt(from = 2, until = 5),
+          delay = randomLong(from = 500, until = 5000),
+          multiplier = randomDouble(from = 1.0, until = 3.0),
+          maxDelay = randomLong(from = 10000, until = 30000),
         ),
     )
 
@@ -248,4 +251,7 @@ object TestingFu {
       interestApplicationDay = randomInt(1, 31),
       interestApplicationMonth = randomInt(1, 12),
     )
+
+  fun randomLedgerConfigurationProperties(): LedgerConfigurationProperties =
+    LedgerConfigurationProperties(kafka = randomKafkaConfigurationProperties())
 }
