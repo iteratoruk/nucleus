@@ -114,7 +114,7 @@ class InterestAccrualListener(
             toAccount = account,
             toAddress = InterestFeatureAddresses.TOTAL_ACCRUED_INCOMING,
             amount = it.value,
-            type = LedgerEntryType.TRANSFER,
+            type = LedgerEntryType.ACCRUED_INTEREST_COALESCENCE,
             timestamp = msg.accrualTimestamp,
           ),
         )

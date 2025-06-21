@@ -149,7 +149,7 @@ abstract class AbstractFeaturePipelineIntegrationTest
           toAccount = account,
           toAddress = LedgerConstants.DEFAULT_ADDRESS,
           amount = balance,
-          type = LedgerEntryType.TRANSFER,
+          type = LedgerEntryType.ON_US,
           timestamp = timestamp,
         ),
       )

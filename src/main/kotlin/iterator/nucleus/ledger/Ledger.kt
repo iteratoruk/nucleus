@@ -44,7 +44,8 @@ enum class LedgerEntryType {
   ACCRUED_INTEREST_ROUNDING_SETTLEMENT,
   INTEREST_APPLICATION,
   REVERSAL,
-  TRANSFER,
+  ACCRUED_INTEREST_COALESCENCE,
+  ON_US,
   WITHDRAWAL {
     override fun maybePublishSuccessfulOperation(
       kafka: KafkaTemplate<String, Any>,

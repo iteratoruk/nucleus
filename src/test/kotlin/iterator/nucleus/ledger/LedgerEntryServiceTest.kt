@@ -4,6 +4,7 @@ import iterator.nucleus.TestingFu.aValidAccount
 import iterator.nucleus.TestingFu.aValidAccountTemplate
 import iterator.nucleus.TestingFu.randomAlphabetic
 import iterator.nucleus.TestingFu.randomBigDecimal
+import iterator.nucleus.TestingFu.randomEnum
 import iterator.nucleus.account.Account
 import iterator.nucleus.truncatedToPostgresAccuracy
 import org.assertj.core.api.Assertions.assertThat
@@ -46,7 +47,7 @@ class LedgerEntryServiceTest(
           toAccount = mock(),
           toAddress = "B",
           amount = BigDecimal.ZERO,
-          type = LedgerEntryType.TRANSFER,
+          type = randomEnum(LedgerEntryType::class.java),
           timestamp = Instant.now(),
         ),
       )
@@ -67,7 +68,7 @@ class LedgerEntryServiceTest(
           toAccount = mock(),
           toAddress = "B",
           amount = BigDecimal("-10.00"),
-          type = LedgerEntryType.TRANSFER,
+          type = randomEnum(LedgerEntryType::class.java),
           timestamp = Instant.now(),
         ),
       )
@@ -96,7 +97,7 @@ class LedgerEntryServiceTest(
           toAccount = toAccount,
           toAddress = "ADDR2",
           amount = amount,
-          type = LedgerEntryType.TRANSFER,
+          type = randomEnum(LedgerEntryType::class.java),
           timestamp = now,
         ),
       )
@@ -194,7 +195,7 @@ class LedgerEntryServiceTest(
         account = mock(),
         phase = LedgerEntryPhase.COMMITTED,
         amount = BigDecimal("-50.00"),
-        type = LedgerEntryType.TRANSFER,
+        type = randomEnum(LedgerEntryType::class.java),
         address = "A",
         asset = "X",
         timestamp = now.minusSeconds(60),
@@ -206,7 +207,7 @@ class LedgerEntryServiceTest(
         account = mock(),
         phase = LedgerEntryPhase.COMMITTED,
         amount = BigDecimal("50.00"),
-        type = LedgerEntryType.TRANSFER,
+        type = randomEnum(LedgerEntryType::class.java),
         address = "A",
         asset = "X",
         timestamp = now.minusSeconds(60),
@@ -284,7 +285,7 @@ class LedgerEntryServiceTest(
             account = mock(),
             phase = LedgerEntryPhase.COMMITTED,
             amount = BigDecimal("-20.00"),
-            type = LedgerEntryType.TRANSFER,
+            type = randomEnum(LedgerEntryType::class.java),
             address = "A",
             asset = "X",
             timestamp = Instant.now(),
@@ -296,7 +297,7 @@ class LedgerEntryServiceTest(
         account = mock(),
         phase = LedgerEntryPhase.COMMITTED,
         amount = BigDecimal("-20.00"),
-        type = LedgerEntryType.TRANSFER,
+        type = randomEnum(LedgerEntryType::class.java),
         address = "A",
         asset = "X",
         timestamp = Instant.now(),
