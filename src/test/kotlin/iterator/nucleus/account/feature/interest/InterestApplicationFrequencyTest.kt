@@ -273,115 +273,115 @@ class InterestApplicationFrequencyTest {
           ),
         ),
       )
-  
-  @JvmStatic
-  fun nextApplicationDateScenarios(): Stream<Arguments> =
-    Stream.of(
-      // ─── MONTHLY FREQUENCY ────────────────────────────────────────────────
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2025, 6, 14),
-          interestApplicationDay = 15,
-          frequency = InterestApplicationFrequency.MONTHLY,
-          expectedDate = LocalDate.of(2025, 6, 15),
+
+    @JvmStatic
+    fun nextApplicationDateScenarios(): Stream<Arguments> =
+      Stream.of(
+        // ─── MONTHLY FREQUENCY ────────────────────────────────────────────────
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 6, 14),
+            interestApplicationDay = 15,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2025, 6, 15),
+          ),
         ),
-      ),
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2025, 6, 15),
-          interestApplicationDay = 15,
-          frequency = InterestApplicationFrequency.MONTHLY,
-          expectedDate = LocalDate.of(2025, 6, 15),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 6, 15),
+            interestApplicationDay = 15,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2025, 6, 15),
+          ),
         ),
-      ),
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2025, 6, 16),
-          interestApplicationDay = 15,
-          frequency = InterestApplicationFrequency.MONTHLY,
-          expectedDate = LocalDate.of(2025, 7, 15),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 6, 16),
+            interestApplicationDay = 15,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2025, 7, 15),
+          ),
         ),
-      ),
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2025, 2, 27),
-          interestApplicationDay = 29,
-          frequency = InterestApplicationFrequency.MONTHLY,
-          expectedDate = LocalDate.of(2025, 2, 28),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 2, 27),
+            interestApplicationDay = 29,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2025, 2, 28),
+          ),
         ),
-      ),
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2024, 2, 28),
-          interestApplicationDay = 30,
-          frequency = InterestApplicationFrequency.MONTHLY,
-          expectedDate = LocalDate.of(2024, 2, 29),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2024, 2, 28),
+            interestApplicationDay = 30,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2024, 2, 29),
+          ),
         ),
-      ),
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2025, 6, 30),
-          interestApplicationDay = 31,
-          frequency = InterestApplicationFrequency.MONTHLY,
-          expectedDate = LocalDate.of(2025, 6, 30),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 6, 30),
+            interestApplicationDay = 31,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2025, 6, 30),
+          ),
         ),
-      ),
-      // ─── ANNUAL FREQUENCY ─────────────────────────────────────────────────
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2025, 1, 10),
-          interestApplicationDay = 15,
-          interestApplicationMonth = 2,
-          frequency = InterestApplicationFrequency.ANNUALLY,
-          expectedDate = LocalDate.of(2025, 2, 15),
+        // ─── ANNUAL FREQUENCY ─────────────────────────────────────────────────
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 1, 10),
+            interestApplicationDay = 15,
+            interestApplicationMonth = 2,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2025, 2, 15),
+          ),
         ),
-      ),
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2025, 2, 15),
-          interestApplicationDay = 15,
-          interestApplicationMonth = 2,
-          frequency = InterestApplicationFrequency.ANNUALLY,
-          expectedDate = LocalDate.of(2025, 2, 15),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 2, 15),
+            interestApplicationDay = 15,
+            interestApplicationMonth = 2,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2025, 2, 15),
+          ),
         ),
-      ),
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2025, 3, 1),
-          interestApplicationDay = 15,
-          interestApplicationMonth = 2,
-          frequency = InterestApplicationFrequency.ANNUALLY,
-          expectedDate = LocalDate.of(2026, 2, 15),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 3, 1),
+            interestApplicationDay = 15,
+            interestApplicationMonth = 2,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2026, 2, 15),
+          ),
         ),
-      ),
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2024, 2, 28),
-          interestApplicationDay = 29,
-          interestApplicationMonth = 2,
-          frequency = InterestApplicationFrequency.ANNUALLY,
-          expectedDate = LocalDate.of(2024, 2, 29),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2024, 2, 28),
+            interestApplicationDay = 29,
+            interestApplicationMonth = 2,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2024, 2, 29),
+          ),
         ),
-      ),
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2024, 3, 1),
-          interestApplicationDay = 29,
-          interestApplicationMonth = 2,
-          frequency = InterestApplicationFrequency.ANNUALLY,
-          expectedDate = LocalDate.of(2025, 2, 28),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2024, 3, 1),
+            interestApplicationDay = 29,
+            interestApplicationMonth = 2,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2025, 2, 28),
+          ),
         ),
-      ),
-      Arguments.of(
-        NextApplicationDateScenario(
-          startDate = LocalDate.of(2025, 5, 1),
-          interestApplicationDay = 31,
-          interestApplicationMonth = 4,
-          frequency = InterestApplicationFrequency.ANNUALLY,
-          expectedDate = LocalDate.of(2026, 4, 30),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 5, 1),
+            interestApplicationDay = 31,
+            interestApplicationMonth = 4,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2026, 4, 30),
+          ),
         ),
-      ),
-    )
+      )
   }
 
   @ParameterizedTest(name = "{0}")
@@ -424,12 +424,16 @@ class InterestApplicationFrequencyTest {
     assertThat(nextDate).isEqualTo(scenario.expectedDate)
     // ensure shouldApplyInterest is true on returned date
     assertThat(
-        scenario.frequency.shouldApplyInterest(config, nextDate.atStartOfDay(ZoneOffset.UTC).toInstant())
+      scenario.frequency.shouldApplyInterest(
+        config,
+        nextDate.atStartOfDay(ZoneOffset.UTC).toInstant(),
+      ),
     ).isTrue()
 
     var d = scenario.startDate
     while (d.isBefore(nextDate)) {
-      val shouldApply = scenario.frequency.shouldApplyInterest(config, d.atStartOfDay(ZoneOffset.UTC).toInstant())
+      val shouldApply =
+        scenario.frequency.shouldApplyInterest(config, d.atStartOfDay(ZoneOffset.UTC).toInstant())
       assertThat(shouldApply).describedAs("should not apply on $d").isFalse()
       d = d.plusDays(1)
     }
