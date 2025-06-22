@@ -23,6 +23,18 @@ data class ApplyInterestScenario(
       "given application day $interestApplicationDay and month $interestApplicationMonth with frequency $frequency"
 }
 
+data class NextApplicationDateScenario(
+  val startDate: LocalDate,
+  val interestApplicationDay: Int,
+  val interestApplicationMonth: Int = 0,
+  val frequency: InterestApplicationFrequency,
+  val expectedDate: LocalDate,
+) {
+  override fun toString(): String =
+    "starting $startDate expecting $expectedDate for day $interestApplicationDay" +
+      " month $interestApplicationMonth with frequency $frequency"
+}
+
 class InterestApplicationFrequencyTest {
   companion object {
     @JvmStatic
@@ -261,6 +273,115 @@ class InterestApplicationFrequencyTest {
           ),
         ),
       )
+
+    @JvmStatic
+    fun nextApplicationDateScenarios(): Stream<Arguments> =
+      Stream.of(
+        // ─── MONTHLY FREQUENCY ────────────────────────────────────────────────
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 6, 14),
+            interestApplicationDay = 15,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2025, 6, 15),
+          ),
+        ),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 6, 15),
+            interestApplicationDay = 15,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2025, 6, 15),
+          ),
+        ),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 6, 16),
+            interestApplicationDay = 15,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2025, 7, 15),
+          ),
+        ),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 2, 27),
+            interestApplicationDay = 29,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2025, 2, 28),
+          ),
+        ),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2024, 2, 28),
+            interestApplicationDay = 30,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2024, 2, 29),
+          ),
+        ),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 6, 30),
+            interestApplicationDay = 31,
+            frequency = InterestApplicationFrequency.MONTHLY,
+            expectedDate = LocalDate.of(2025, 6, 30),
+          ),
+        ),
+        // ─── ANNUAL FREQUENCY ─────────────────────────────────────────────────
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 1, 10),
+            interestApplicationDay = 15,
+            interestApplicationMonth = 2,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2025, 2, 15),
+          ),
+        ),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 2, 15),
+            interestApplicationDay = 15,
+            interestApplicationMonth = 2,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2025, 2, 15),
+          ),
+        ),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 3, 1),
+            interestApplicationDay = 15,
+            interestApplicationMonth = 2,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2026, 2, 15),
+          ),
+        ),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2024, 2, 28),
+            interestApplicationDay = 29,
+            interestApplicationMonth = 2,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2024, 2, 29),
+          ),
+        ),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2024, 3, 1),
+            interestApplicationDay = 29,
+            interestApplicationMonth = 2,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2025, 2, 28),
+          ),
+        ),
+        Arguments.of(
+          NextApplicationDateScenario(
+            startDate = LocalDate.of(2025, 5, 1),
+            interestApplicationDay = 31,
+            interestApplicationMonth = 4,
+            frequency = InterestApplicationFrequency.ANNUALLY,
+            expectedDate = LocalDate.of(2026, 4, 30),
+          ),
+        ),
+      )
   }
 
   @ParameterizedTest(name = "{0}")
@@ -285,6 +406,37 @@ class InterestApplicationFrequencyTest {
 
     // then
     assertThat(actual).isEqualTo(scenario.shouldApply)
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("nextApplicationDateScenarios")
+  fun `should return next interest application date`(scenario: NextApplicationDateScenario) {
+    val effectiveTimestamp = scenario.startDate.atStartOfDay(ZoneOffset.UTC).toInstant()
+    val config =
+      config(
+        day = scenario.interestApplicationDay,
+        month = scenario.interestApplicationMonth,
+        frequency = scenario.frequency,
+      )
+
+    val nextDate = scenario.frequency.getNextInterestApplicationDate(config, effectiveTimestamp)
+
+    assertThat(nextDate).isEqualTo(scenario.expectedDate)
+    // ensure shouldApplyInterest is true on returned date
+    assertThat(
+      scenario.frequency.shouldApplyInterest(
+        config,
+        nextDate.atStartOfDay(ZoneOffset.UTC).toInstant(),
+      ),
+    ).isTrue()
+
+    var d = scenario.startDate
+    while (d.isBefore(nextDate)) {
+      val shouldApply =
+        scenario.frequency.shouldApplyInterest(config, d.atStartOfDay(ZoneOffset.UTC).toInstant())
+      assertThat(shouldApply).describedAs("should not apply on $d").isFalse()
+      d = d.plusDays(1)
+    }
   }
 
   private fun config(

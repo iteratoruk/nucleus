@@ -6,7 +6,9 @@ import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
 import java.time.Instant
+import java.time.LocalDate
 import java.time.Year
+import java.time.YearMonth
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -138,6 +140,22 @@ enum class InterestApplicationFrequency {
 
       return false
     }
+
+    override fun getNextInterestApplicationDate(
+      params: InterestFeatureParameters,
+      effectiveTimestamp: Instant,
+    ): LocalDate {
+      val startDate = effectiveTimestamp.atZone(ZoneOffset.UTC).toLocalDate()
+      val yearMonth = YearMonth.of(startDate.year, params.interestApplicationMonth)
+      var day = params.interestApplicationDay.coerceAtMost(yearMonth.lengthOfMonth())
+      var candidate = LocalDate.of(startDate.year, params.interestApplicationMonth, day)
+      if (candidate.isBefore(startDate)) {
+        val nextYearMonth = YearMonth.of(startDate.year + 1, params.interestApplicationMonth)
+        day = params.interestApplicationDay.coerceAtMost(nextYearMonth.lengthOfMonth())
+        candidate = LocalDate.of(startDate.year + 1, params.interestApplicationMonth, day)
+      }
+      return candidate
+    }
   },
   MONTHLY {
     override fun shouldApplyInterest(
@@ -162,6 +180,21 @@ enum class InterestApplicationFrequency {
 
       return false
     }
+
+    override fun getNextInterestApplicationDate(
+      params: InterestFeatureParameters,
+      effectiveTimestamp: Instant,
+    ): LocalDate {
+      val startDate = effectiveTimestamp.atZone(ZoneOffset.UTC).toLocalDate()
+      var day = params.interestApplicationDay.coerceAtMost(startDate.lengthOfMonth())
+      var candidate = LocalDate.of(startDate.year, startDate.month, day)
+      if (candidate.isBefore(startDate)) {
+        val nextMonth = startDate.plusMonths(1)
+        day = params.interestApplicationDay.coerceAtMost(nextMonth.lengthOfMonth())
+        candidate = LocalDate.of(nextMonth.year, nextMonth.month, day)
+      }
+      return candidate
+    }
   },
   ;
 
@@ -169,4 +202,9 @@ enum class InterestApplicationFrequency {
     params: InterestFeatureParameters,
     effectiveTimestamp: Instant,
   ): Boolean
+
+  abstract fun getNextInterestApplicationDate(
+    params: InterestFeatureParameters,
+    effectiveTimestamp: Instant,
+  ): LocalDate
 }
