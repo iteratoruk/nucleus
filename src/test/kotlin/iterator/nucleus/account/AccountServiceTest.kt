@@ -75,7 +75,7 @@ class AccountServiceTest(
 
     // when ... then
     assertThrows<java.lang.IllegalArgumentException> {
-      service.findRequiredInternalAccount(randomEnum(InternalAccountRole::class.java))
+      service.findRequiredInternalAccount(randomEnum())
     }
   }
 

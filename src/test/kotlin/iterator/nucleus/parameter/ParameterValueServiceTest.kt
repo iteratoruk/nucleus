@@ -13,13 +13,16 @@ import iterator.nucleus.TestingFu.randomLocalDate
 import iterator.nucleus.TestingFu.randomLocalDateTimeInThePast
 import iterator.nucleus.TestingFu.randomLong
 import iterator.nucleus.TestingFu.randomUUID
+import iterator.nucleus.truncatedToPostgresAccuracy
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.given
+import org.mockito.kotlin.refEq
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -30,8 +33,9 @@ import kotlin.test.Test
 @ExtendWith(MockitoExtension::class)
 class ParameterValueServiceTest(
   @Mock val repo: ParameterValueRepository,
+  @Mock val definitionRepository: ParameterDefinitionRepository,
 ) {
-  val service = ParameterValueService(repo, Serialization.mapper)
+  val service = ParameterValueService(repo, definitionRepository, Serialization.mapper)
 
   @Test
   fun `should bind parameter values`() {
@@ -118,6 +122,58 @@ class ParameterValueServiceTest(
     }
   }
 
+  @Test
+  fun `should throw given request to create value for non-existent parameter definition`() {
+    // given
+    given { definitionRepository.findByName(any()) }.willReturn(null)
+
+    // when ... then
+    assertThrows<IllegalArgumentException> {
+      service.createParameterValue(
+        parameterDefinitionName = randomAlphanumeric(8),
+        value = randomAlphanumeric(16),
+        level = randomEnum(),
+        resourceId = randomUUID(),
+      )
+    }
+  }
+
+  @Test
+  fun `should return created value when create parameter value with valid args`() {
+    // given
+    val definition = ParameterDefinition(name = randomAlphanumeric(8))
+    val value = randomAlphanumeric(16)
+    val level = randomEnum<ParameterLevel>()
+    val resourceId = randomUUID()
+    val effectiveFrom = randomInstant().truncatedToPostgresAccuracy()
+    val effectiveTo = randomInstant().truncatedToPostgresAccuracy()
+    given { definitionRepository.findByName(definition.name) }.willReturn(definition)
+    val expected =
+      ParameterValue(
+        definition = definition,
+        level = level,
+        resourceId = resourceId,
+        value = value,
+        effectiveFrom = effectiveFrom,
+        effectiveTo = effectiveTo,
+      )
+    given { repo.save(refEq(expected)) }.willReturn(expected)
+
+    // when
+    val actual =
+      service.createParameterValue(
+        parameterDefinitionName = definition.name,
+        value = value,
+        level = level,
+        resourceId = resourceId,
+        effectiveFrom = effectiveFrom,
+        effectiveTo = effectiveTo,
+      )
+
+    // then
+    assertThat(actual).isEqualTo(expected)
+  }
+
   private fun param(
     name: String,
     value: String,
@@ -125,7 +181,7 @@ class ParameterValueServiceTest(
     ExpectedEffectiveParameter(
       name = name,
       value = value,
-      level = randomEnum(ParameterLevel::class.java),
+      level = randomEnum(),
       resourceId = randomUUID(),
       effectiveFrom = randomInstant(),
       effectiveTo = randomInstant(),

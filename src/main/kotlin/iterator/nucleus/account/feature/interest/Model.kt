@@ -1,5 +1,6 @@
 package iterator.nucleus.account.feature.interest
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import iterator.nucleus.account.feature.FeatureConstants
 import iterator.nucleus.toSevenDecimalPlaces
 import java.math.BigDecimal
@@ -47,7 +48,13 @@ data class InterestFeatureParameters(
   val interestApplicationFrequency: InterestApplicationFrequency,
   val interestApplicationDay: Int,
   val interestApplicationMonth: Int,
+  val bonusInterestInvalidationStrategy: BonusInterestInvalidationStrategy =
+    BonusInterestInvalidationStrategy.WITHDRAWAL,
 )
+
+enum class BonusInterestInvalidationStrategy {
+  WITHDRAWAL,
+}
 
 data class GetCommittedBalanceMessage(
   val accountId: UUID,
@@ -90,8 +97,9 @@ enum class InterestAccrualStrategy {
   },
   ;
 
-  abstract fun getCompoundingFrequency(effectiveTimestamp: Instant): Int
+  @JsonIgnore abstract fun getCompoundingFrequency(effectiveTimestamp: Instant): Int
 
+  @JsonIgnore
   fun calculateAccrual(
     balance: BigDecimal,
     interestRate: BigDecimal,
@@ -198,11 +206,13 @@ enum class InterestApplicationFrequency {
   },
   ;
 
+  @JsonIgnore
   abstract fun shouldApplyInterest(
     params: InterestFeatureParameters,
     effectiveTimestamp: Instant,
   ): Boolean
 
+  @JsonIgnore
   abstract fun getNextInterestApplicationDate(
     params: InterestFeatureParameters,
     effectiveTimestamp: Instant,

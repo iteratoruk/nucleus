@@ -14,6 +14,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -35,6 +36,7 @@ class ParameterValue(
 @Service
 class ParameterValueService(
   val repo: ParameterValueRepository,
+  val definitionRepository: ParameterDefinitionRepository,
   val om: ObjectMapper,
 ) {
   private val parameterNamesCache: ConcurrentMap<KClass<*>, Set<String>> = ConcurrentHashMap()
@@ -68,6 +70,31 @@ class ParameterValueService(
     val javaType =
       typesCache.computeIfAbsent(dataClass) { cls -> om.typeFactory.constructType(cls.java) }
     return om.convertValue(effectiveParameters, javaType)
+  }
+
+  @Transactional
+  fun createParameterValue(
+    parameterDefinitionName: String,
+    value: String,
+    level: ParameterLevel,
+    resourceId: String,
+    effectiveFrom: Instant = Instant.now(),
+    effectiveTo: Instant? = null,
+  ): ParameterValue {
+    val definition = definitionRepository.findByName(parameterDefinitionName)
+    requireNotNull(definition) {
+      "Parameter definition with name $parameterDefinitionName does not exist."
+    }
+    return repo.save(
+      ParameterValue(
+        definition = definition,
+        level = level,
+        resourceId = resourceId,
+        value = value,
+        effectiveFrom = effectiveFrom,
+        effectiveTo = effectiveTo,
+      ),
+    )
   }
 }
 

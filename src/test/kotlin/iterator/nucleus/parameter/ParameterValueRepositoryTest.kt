@@ -452,7 +452,7 @@ class ParameterValueRepositoryTest
       persistAndFlush(def)
       return ParameterValue(
         definition = def,
-        level = randomEnum(ParameterLevel::class.java),
+        level = randomEnum(),
         resourceId = randomAlphanumeric(36),
         value =
           """
@@ -466,7 +466,7 @@ class ParameterValueRepositoryTest
     override fun entityClass(): Class<ParameterValue> = ParameterValue::class.java
 
     override fun mutateEntity(entity: ParameterValue) {
-      entity.level = randomEnum(ParameterLevel::class.java)
+      entity.level = randomEnum()
       entity.resourceId = randomAlphanumeric(36)
       entity.value =
         """

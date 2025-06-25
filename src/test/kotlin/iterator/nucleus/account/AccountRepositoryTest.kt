@@ -97,8 +97,7 @@ class AccountRepositoryTest
     @Test
     fun `should return null given non-existent account ID when find by account ID and status`() {
       // when
-      val actual =
-        repo.findByAccountIdAndStatus(UUID.randomUUID(), randomEnum(AccountStatus::class.java))
+      val actual = repo.findByAccountIdAndStatus(UUID.randomUUID(), randomEnum())
 
       // then
       assertThat(actual).isNull()

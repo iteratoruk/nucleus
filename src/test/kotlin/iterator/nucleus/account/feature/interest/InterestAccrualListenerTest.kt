@@ -2,6 +2,7 @@ package iterator.nucleus.account.feature.interest
 
 import iterator.nucleus.TestingFu.aValidAccount
 import iterator.nucleus.TestingFu.aValidAccountTemplate
+import iterator.nucleus.TestingFu.aValidCustomerTranche
 import iterator.nucleus.TestingFu.aValidInternalAccount
 import iterator.nucleus.TestingFu.randomBigDecimal
 import iterator.nucleus.TestingFu.randomInterestFeatureParameters
@@ -17,6 +18,10 @@ import iterator.nucleus.audit.NucleusAuditEventType
 import iterator.nucleus.ledger.CreateTransferRequest
 import iterator.nucleus.ledger.LedgerEntryService
 import iterator.nucleus.ledger.LedgerEntryType
+import iterator.nucleus.ledger.WithdrawalMessage
+import iterator.nucleus.parameter.ParameterLevel
+import iterator.nucleus.parameter.ParameterValueService
+import iterator.nucleus.truncatedToPostgresAccuracy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -32,15 +37,19 @@ import java.math.BigDecimal
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
+import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
 class InterestAccrualListenerTest(
   @Mock val accountService: AccountService,
   @Mock val ledgerService: LedgerEntryService,
+  @Mock val parameterValueService: ParameterValueService,
   @Mock val kafka: KafkaTemplate<String, Any>,
   @Mock val audit: AuditService,
 ) {
-  val listener = InterestAccrualListener(accountService, ledgerService, kafka, audit)
+  val listener =
+    InterestAccrualListener(accountService, ledgerService, parameterValueService, kafka, audit)
 
   lateinit var now: Instant
 
@@ -631,6 +640,87 @@ class InterestAccrualListenerTest(
             accrualTimestamp = msg.accrualTimestamp,
           ),
         ),
+      )
+  }
+
+  @Test
+  fun `should ignore message for withdrawal from account on which bonus interest is not enabled when handle withdrawal`() {
+    // given
+    val account =
+      aValidAccount(
+        accountTemplate = aValidAccountTemplate(),
+        customerTranche = aValidCustomerTranche(),
+      )
+    given { accountService.findRequiredOpenAccount(account.accountId) }.willReturn(account)
+    val msg =
+      WithdrawalMessage(
+        accountId = account.accountId,
+        operationId = UUID.randomUUID(),
+        timestamp = Instant.now().truncatedToPostgresAccuracy(),
+      )
+    val config = randomInterestFeatureParameters(bonusInterestEnabled = false)
+    given {
+      parameterValueService.findAndBindEffectiveParameters(
+        dataClass = InterestFeatureParameters::class,
+        accountId = account.accountId,
+        effectiveAt = msg.timestamp,
+        accountTemplateId = account.accountTemplate.accountTemplateId,
+        customerTrancheId = account.customerTranche?.customerTrancheId,
+      )
+    }.willReturn(config)
+
+    // when
+    listener.handleWithdrawal(msg)
+
+    // then
+    verifyNoInteractions(ledgerService, kafka, audit)
+  }
+
+  @Test
+  fun `should invalidate bonus interest for withdrawal given bonus interest enabled with withdrawal strategy when handle withdrawal`() {
+    // given
+    val account =
+      aValidAccount(
+        accountTemplate = aValidAccountTemplate(),
+        customerTranche = aValidCustomerTranche(),
+      )
+    given { accountService.findRequiredOpenAccount(account.accountId) }.willReturn(account)
+    val msg =
+      WithdrawalMessage(
+        accountId = account.accountId,
+        operationId = UUID.randomUUID(),
+        timestamp = Instant.now().truncatedToPostgresAccuracy(),
+      )
+    val config = randomInterestFeatureParameters(bonusInterestEnabled = true)
+    given {
+      parameterValueService.findAndBindEffectiveParameters(
+        dataClass = InterestFeatureParameters::class,
+        accountId = account.accountId,
+        effectiveAt = msg.timestamp,
+        accountTemplateId = account.accountTemplate.accountTemplateId,
+        customerTrancheId = account.customerTranche?.customerTrancheId,
+      )
+    }.willReturn(config)
+    val expectedInvalidationDate =
+      config.interestApplicationFrequency
+        .getNextInterestApplicationDate(params = config, effectiveTimestamp = msg.timestamp)
+        .plusDays(1)
+        .atStartOfDay()
+        .truncatedTo(ChronoUnit.HOURS)
+        .toInstant(ZoneOffset.UTC)
+
+    // when
+    listener.handleWithdrawal(msg)
+
+    // then
+    verify(parameterValueService, times(1))
+      .createParameterValue(
+        parameterDefinitionName = "bonusInterestEnabled",
+        value = false.toString(),
+        level = ParameterLevel.ACCOUNT,
+        resourceId = account.accountId.toString(),
+        effectiveFrom = msg.timestamp,
+        effectiveTo = expectedInvalidationDate,
       )
   }
 }

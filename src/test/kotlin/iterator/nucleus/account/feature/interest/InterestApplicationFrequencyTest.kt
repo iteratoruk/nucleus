@@ -1,6 +1,8 @@
 package iterator.nucleus.account.feature.interest
 
-import iterator.nucleus.TestingFu
+import iterator.nucleus.TestingFu.randomBigDecimal
+import iterator.nucleus.TestingFu.randomBoolean
+import iterator.nucleus.TestingFu.randomEnum
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -445,10 +447,10 @@ class InterestApplicationFrequencyTest {
     frequency: InterestApplicationFrequency = InterestApplicationFrequency.MONTHLY,
   ): InterestFeatureParameters =
     InterestFeatureParameters(
-      interestRate = TestingFu.randomBigDecimal(0.01, 1.00),
-      bonusInterestEnabled = TestingFu.randomBoolean(),
-      bonusInterestRate = TestingFu.randomBigDecimal(0.01, 1.00),
-      interestAccrualStrategy = TestingFu.randomEnum(InterestAccrualStrategy::class.java),
+      interestRate = randomBigDecimal(0.01, 1.00),
+      bonusInterestEnabled = randomBoolean(),
+      bonusInterestRate = randomBigDecimal(0.01, 1.00),
+      interestAccrualStrategy = randomEnum(),
       interestApplicationFrequency = frequency,
       interestApplicationDay = day,
       interestApplicationMonth = month,

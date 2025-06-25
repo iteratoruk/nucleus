@@ -177,9 +177,7 @@ data class CreateTransferRequest(
 
 enum class LedgerEntryPhase {
   COMMITTED,
-  COMMITTED_DEBIT,
   PENDING,
-  PENDING_DEBIT,
 }
 
 object LedgerConstants {

@@ -11,6 +11,10 @@ import iterator.nucleus.ledger.CreateTransferRequest
 import iterator.nucleus.ledger.LedgerConstants
 import iterator.nucleus.ledger.LedgerEntryService
 import iterator.nucleus.ledger.LedgerEntryType
+import iterator.nucleus.ledger.LedgerTopics
+import iterator.nucleus.ledger.WithdrawalMessage
+import iterator.nucleus.parameter.ParameterLevel
+import iterator.nucleus.parameter.ParameterValueService
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.kafka.annotation.RetryableTopic
 import org.springframework.kafka.core.KafkaTemplate
@@ -18,11 +22,14 @@ import org.springframework.retry.annotation.Backoff
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 
 @Component
 class InterestAccrualListener(
   val accountService: AccountService,
   val ledgerService: LedgerEntryService,
+  val parameterValueService: ParameterValueService,
   val kafka: KafkaTemplate<String, Any>,
   val audit: AuditService,
 ) {
@@ -128,6 +135,50 @@ class InterestAccrualListener(
         applicationTimestamp = msg.applicationTimestamp,
       ),
     )
+  }
+
+  @Transactional
+  @KafkaListener(topics = [LedgerTopics.WITHDRAWALS])
+  @RetryableTopic(
+    attempts = "\${nucleus.account.features.interest.kafka.retry.max-attempts}",
+    backoff =
+      Backoff(
+        delayExpression = "\${nucleus.ledger.kafka.retry.delay}",
+        multiplierExpression = "\${nucleus.ledger.kafka.retry.multiplier}",
+        maxDelayExpression = "\${nucleus.ledger.kafka.retry.max-delay}",
+      ),
+    exclude = [IllegalArgumentException::class],
+  )
+  fun handleWithdrawal(msg: WithdrawalMessage) {
+    val account = accountService.findRequiredOpenAccount(msg.accountId)
+    val params =
+      parameterValueService.findAndBindEffectiveParameters(
+        dataClass = InterestFeatureParameters::class,
+        effectiveAt = msg.timestamp,
+        accountId = msg.accountId,
+        accountTemplateId = account.accountTemplate.accountTemplateId,
+        customerTrancheId = account.customerTranche?.customerTrancheId,
+      )
+    if (params.bonusInterestEnabled &&
+      BonusInterestInvalidationStrategy.WITHDRAWAL == params.bonusInterestInvalidationStrategy
+    ) {
+      parameterValueService.createParameterValue(
+        parameterDefinitionName = "bonusInterestEnabled",
+        value = false.toString(),
+        level = ParameterLevel.ACCOUNT,
+        resourceId = account.accountId.toString(),
+        effectiveFrom = msg.timestamp,
+        effectiveTo =
+          params.interestApplicationFrequency
+            .getNextInterestApplicationDate(
+              params = params,
+              effectiveTimestamp = msg.timestamp,
+            ).plusDays(1)
+            .atStartOfDay(ZoneOffset.UTC)
+            .truncatedTo(ChronoUnit.HOURS)
+            .toInstant(),
+      )
+    }
   }
 
   private fun doAccrualAndForward(

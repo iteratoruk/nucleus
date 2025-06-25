@@ -15,4 +15,7 @@ class ParameterDefinition(
   var description: String? = null,
 ) : AbstractMutableJpaEntity()
 
-@Repository interface ParameterDefinitionRepository : AbstractJpaRepository<ParameterDefinition>
+@Repository
+interface ParameterDefinitionRepository : AbstractJpaRepository<ParameterDefinition> {
+  fun findByName(name: String): ParameterDefinition?
+}

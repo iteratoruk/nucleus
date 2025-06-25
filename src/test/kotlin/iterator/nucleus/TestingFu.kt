@@ -7,8 +7,6 @@ import iterator.nucleus.account.AccountConstants
 import iterator.nucleus.account.AccountFeature
 import iterator.nucleus.account.AccountStatus
 import iterator.nucleus.account.InternalAccountRole
-import iterator.nucleus.account.feature.interest.InterestAccrualStrategy
-import iterator.nucleus.account.feature.interest.InterestApplicationFrequency
 import iterator.nucleus.account.feature.interest.InterestFeatureConfigurationProperties
 import iterator.nucleus.account.feature.interest.InterestFeatureParameters
 import iterator.nucleus.account.feature.interest.InterestFeatureScheduledTaskConfigurationProperties
@@ -18,8 +16,6 @@ import iterator.nucleus.kafka.KafkaConfigurationProperties
 import iterator.nucleus.kafka.KafkaRetryConfigurationProperties
 import iterator.nucleus.ledger.LedgerConfigurationProperties
 import iterator.nucleus.ledger.LedgerEntry
-import iterator.nucleus.ledger.LedgerEntryPhase
-import iterator.nucleus.ledger.LedgerEntryType
 import org.apache.commons.lang3.RandomStringUtils
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -136,6 +132,8 @@ object TestingFu {
 
   fun <E : Enum<E>> randomEnum(enumClass: Class<E>): E = enumClass.enumConstants.random()
 
+  inline fun <reified E : Enum<E>> randomEnum(): E = randomEnum(E::class.java)
+
   fun <E> randomListItem(list: List<E>): E = list[randomInt(0, list.size - 1)]
 
   fun <T> randomElement(coll: Collection<T>): T = coll.random()
@@ -156,7 +154,7 @@ object TestingFu {
     accountTemplate: AccountTemplate,
     accountId: UUID = UUID.randomUUID(),
     customerTranche: CustomerTranche? = null,
-    status: AccountStatus = randomEnum(AccountStatus::class.java),
+    status: AccountStatus = randomEnum(),
   ): Account =
     Account(
       accountId = accountId,
@@ -171,7 +169,7 @@ object TestingFu {
     accountTemplate: AccountTemplate,
     accountId: UUID = UUID.randomUUID(),
     customerTranche: CustomerTranche? = null,
-    status: AccountStatus = randomEnum(AccountStatus::class.java),
+    status: AccountStatus = randomEnum(),
   ): Set<Account> =
     (1..numberOfAccounts)
       .map { i ->
@@ -183,7 +181,7 @@ object TestingFu {
         ).apply { id = i.toLong() }
       }.toSet()
 
-  fun aValidInternalAccount(role: InternalAccountRole = randomEnum(InternalAccountRole::class.java)): Account =
+  fun aValidInternalAccount(role: InternalAccountRole = randomEnum()): Account =
     aValidAccount(aValidAccountTemplate()).apply {
       internal = true
       internalAccountRole = role
@@ -198,9 +196,9 @@ object TestingFu {
     LedgerEntry(
       operationId = UUID.randomUUID(),
       account = account,
-      phase = randomEnum(LedgerEntryPhase::class.java),
+      phase = randomEnum(),
       amount = randomBigDecimal(0.01, 999999.99).toSevenDecimalPlaces(),
-      type = randomEnum(LedgerEntryType::class.java),
+      type = randomEnum(),
       address = randomAlphabetic(16).uppercase(),
       asset = randomAlphabetic(16).uppercase(),
       timestamp = randomInstant(),
@@ -241,13 +239,13 @@ object TestingFu {
         ),
     )
 
-  fun randomInterestFeatureParameters(): InterestFeatureParameters =
+  fun randomInterestFeatureParameters(bonusInterestEnabled: Boolean = randomBoolean()): InterestFeatureParameters =
     InterestFeatureParameters(
       interestRate = randomBigDecimal(0.0010000, 0.9999999),
-      bonusInterestEnabled = randomBoolean(),
+      bonusInterestEnabled = bonusInterestEnabled,
       bonusInterestRate = randomBigDecimal(0.0010000, 0.9999999),
-      interestAccrualStrategy = randomEnum(InterestAccrualStrategy::class.java),
-      interestApplicationFrequency = randomEnum(InterestApplicationFrequency::class.java),
+      interestAccrualStrategy = randomEnum(),
+      interestApplicationFrequency = randomEnum(),
       interestApplicationDay = randomInt(1, 31),
       interestApplicationMonth = randomInt(1, 12),
     )
