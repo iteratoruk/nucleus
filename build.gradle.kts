@@ -58,8 +58,6 @@ dependencies {
   implementation("com.github.java-json-tools:json-patch:1.13")
 	implementation("commons-io:commons-io:2.19.0")
   implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.10")
-  implementation("net.javacrumbs.shedlock:shedlock-spring:6.8.0")
-  implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:6.8.0")
 	implementation("org.apache.commons:commons-lang3")
   implementation("org.flywaydb:flyway-core")
   implementation("org.flywaydb:flyway-database-postgresql")

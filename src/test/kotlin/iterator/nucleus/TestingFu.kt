@@ -14,7 +14,6 @@ import iterator.nucleus.account.template.AccountTemplate
 import iterator.nucleus.customer.CustomerTranche
 import iterator.nucleus.kafka.KafkaConfigurationProperties
 import iterator.nucleus.kafka.KafkaRetryConfigurationProperties
-import iterator.nucleus.ledger.LedgerConfigurationProperties
 import iterator.nucleus.ledger.LedgerEntry
 import org.apache.commons.lang3.RandomStringUtils
 import java.math.BigDecimal
@@ -223,7 +222,6 @@ object TestingFu {
           accrualIncrementDuration = Duration.ofMillis(randomLong(1, 999)),
           applicationIncrementDuration = Duration.ofSeconds(randomLong(1, 120)),
         ),
-      kafka = randomKafkaConfigurationProperties(),
     )
 
   fun randomKafkaConfigurationProperties(): KafkaConfigurationProperties =
@@ -249,7 +247,4 @@ object TestingFu {
       interestApplicationDay = randomInt(1, 31),
       interestApplicationMonth = randomInt(1, 12),
     )
-
-  fun randomLedgerConfigurationProperties(): LedgerConfigurationProperties =
-    LedgerConfigurationProperties(kafka = randomKafkaConfigurationProperties())
 }

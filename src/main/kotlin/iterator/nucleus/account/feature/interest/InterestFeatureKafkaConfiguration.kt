@@ -1,5 +1,6 @@
 package iterator.nucleus.account.feature.interest
 
+import iterator.nucleus.kafka.KafkaConfigurationProperties
 import iterator.nucleus.kafka.KafkaConfigurationUtils
 import iterator.nucleus.kafka.RegexTopicMessageTypeMapper
 import org.springframework.context.annotation.Bean
@@ -10,11 +11,11 @@ import org.springframework.stereotype.Component
 @Configuration
 class InterestFeatureKafkaConfiguration {
   @Bean
-  fun interestFeatureTopics(cfg: InterestFeatureConfigurationProperties): NewTopics =
+  fun interestFeatureTopics(cfg: KafkaConfigurationProperties): NewTopics =
     KafkaConfigurationUtils.toNewTopics(
       obj = InterestFeatureTopics,
-      numberOfPartitions = cfg.kafka.numberOfPartitions,
-      replicationFactor = cfg.kafka.replicationFactor,
+      numberOfPartitions = cfg.numberOfPartitions,
+      replicationFactor = cfg.replicationFactor,
     )
 }
 

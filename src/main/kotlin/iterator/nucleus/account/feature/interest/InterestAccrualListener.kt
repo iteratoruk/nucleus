@@ -7,6 +7,7 @@ import iterator.nucleus.audit.AccountProcessingPipelineFinishedEvent
 import iterator.nucleus.audit.AuditService
 import iterator.nucleus.audit.InterestAccruedEvent
 import iterator.nucleus.audit.NucleusAuditEventType
+import iterator.nucleus.kafka.TransactionalRetryingKafkaListener
 import iterator.nucleus.ledger.CreateTransferRequest
 import iterator.nucleus.ledger.LedgerConstants
 import iterator.nucleus.ledger.LedgerEntryService
@@ -15,12 +16,8 @@ import iterator.nucleus.ledger.LedgerTopics
 import iterator.nucleus.ledger.WithdrawalMessage
 import iterator.nucleus.parameter.ParameterLevel
 import iterator.nucleus.parameter.ParameterValueService
-import org.springframework.kafka.annotation.KafkaListener
-import org.springframework.kafka.annotation.RetryableTopic
 import org.springframework.kafka.core.KafkaTemplate
-import org.springframework.retry.annotation.Backoff
 import org.springframework.stereotype.Component
-import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
@@ -33,18 +30,7 @@ class InterestAccrualListener(
   val kafka: KafkaTemplate<String, Any>,
   val audit: AuditService,
 ) {
-  @Transactional
-  @KafkaListener(topics = [InterestFeatureTopics.ACCRUE_INTEREST])
-  @RetryableTopic(
-    attempts = "\${nucleus.account.features.interest.kafka.retry.max-attempts}",
-    backoff =
-      Backoff(
-        delayExpression = "\${nucleus.account.features.interest.kafka.retry.delay}",
-        multiplierExpression = "\${nucleus.account.features.interest.kafka.retry.multiplier}",
-        maxDelayExpression = "\${nucleus.account.features.interest.kafka.retry.max-delay}",
-      ),
-    exclude = [IllegalArgumentException::class],
-  )
+  @TransactionalRetryingKafkaListener(topics = [InterestFeatureTopics.ACCRUE_INTEREST])
   fun accrueInterest(msg: InterestAccrualMessage) =
     doAccrualAndForward(
       interestRate = msg.params.interestRate,
@@ -61,18 +47,7 @@ class InterestAccrualListener(
       }
     }
 
-  @Transactional
-  @KafkaListener(topics = [InterestFeatureTopics.ACCRUE_BONUS_INTEREST])
-  @RetryableTopic(
-    attempts = "\${nucleus.account.features.interest.kafka.retry.max-attempts}",
-    backoff =
-      Backoff(
-        delayExpression = "\${nucleus.account.features.interest.kafka.retry.delay}",
-        multiplierExpression = "\${nucleus.account.features.interest.kafka.retry.multiplier}",
-        maxDelayExpression = "\${nucleus.account.features.interest.kafka.retry.max-delay}",
-      ),
-    exclude = [IllegalArgumentException::class],
-  )
+  @TransactionalRetryingKafkaListener(topics = [InterestFeatureTopics.ACCRUE_BONUS_INTEREST])
   fun accrueBonusInterest(msg: InterestAccrualMessage) =
     doAccrualAndForward(
       interestRate = msg.params.bonusInterestRate,
@@ -88,18 +63,7 @@ class InterestAccrualListener(
       }
     }
 
-  @Transactional
-  @KafkaListener(topics = [InterestFeatureTopics.COALESCE_ACCRUED_INTEREST])
-  @RetryableTopic(
-    attempts = "\${nucleus.account.features.interest.kafka.retry.max-attempts}",
-    backoff =
-      Backoff(
-        delayExpression = "\${nucleus.account.features.interest.kafka.retry.delay}",
-        multiplierExpression = "\${nucleus.account.features.interest.kafka.retry.multiplier}",
-        maxDelayExpression = "\${nucleus.account.features.interest.kafka.retry.max-delay}",
-      ),
-    exclude = [IllegalArgumentException::class],
-  )
+  @TransactionalRetryingKafkaListener(topics = [InterestFeatureTopics.COALESCE_ACCRUED_INTEREST])
   fun coalesceAccruedInterest(msg: CoalesceAccruedInterestMessage) {
     val account = accountService.findRequiredOpenAccount(msg.accountId)
     ledgerService
@@ -137,18 +101,7 @@ class InterestAccrualListener(
     )
   }
 
-  @Transactional
-  @KafkaListener(topics = [LedgerTopics.WITHDRAWALS])
-  @RetryableTopic(
-    attempts = "\${nucleus.account.features.interest.kafka.retry.max-attempts}",
-    backoff =
-      Backoff(
-        delayExpression = "\${nucleus.ledger.kafka.retry.delay}",
-        multiplierExpression = "\${nucleus.ledger.kafka.retry.multiplier}",
-        maxDelayExpression = "\${nucleus.ledger.kafka.retry.max-delay}",
-      ),
-    exclude = [IllegalArgumentException::class],
-  )
+  @TransactionalRetryingKafkaListener(topics = [LedgerTopics.WITHDRAWALS])
   fun handleWithdrawal(msg: WithdrawalMessage) {
     val account = accountService.findRequiredOpenAccount(msg.accountId)
     val params =

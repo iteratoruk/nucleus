@@ -1,6 +1,6 @@
 package iterator.nucleus.account.feature.interest
 
-import iterator.nucleus.TestingFu.randomInterestFeatureConfigurationProperties
+import iterator.nucleus.TestingFu.randomKafkaConfigurationProperties
 import iterator.nucleus.getPrivateFieldValue
 import org.apache.kafka.clients.admin.NewTopic
 import org.assertj.core.api.Assertions.assertThat
@@ -26,7 +26,7 @@ class InterestFeatureKafkaConfigurationTest {
   )
   fun `should create topics`(topic: String) {
     // given
-    val props = randomInterestFeatureConfigurationProperties()
+    val props = randomKafkaConfigurationProperties()
 
     // when
     val topics = cfg.interestFeatureTopics(props)
@@ -36,7 +36,7 @@ class InterestFeatureKafkaConfigurationTest {
       (topics.getPrivateFieldValue<Collection<NewTopic>>("newTopics"))!!.first {
         it.name() == topic
       }
-    assertThat(actual.numPartitions()).isEqualTo(props.kafka.numberOfPartitions)
-    assertThat(actual.replicationFactor()).isEqualTo(props.kafka.replicationFactor)
+    assertThat(actual.numPartitions()).isEqualTo(props.numberOfPartitions)
+    assertThat(actual.replicationFactor()).isEqualTo(props.replicationFactor)
   }
 }
