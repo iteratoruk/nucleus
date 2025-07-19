@@ -7,4 +7,5 @@ object FeatureConstants {
 
   // define feature name constants here, so that we can easily see they are all unique
   const val INTEREST_FEATURE_NAME = "INTEREST"
+  const val BALANCE_LIMIT_FEATURE_NAME = "BALANCE_LIMIT"
 }

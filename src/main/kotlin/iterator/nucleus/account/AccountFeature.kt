@@ -10,6 +10,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import org.springframework.stereotype.Repository
+import org.springframework.stereotype.Service
 
 @Entity
 @Cache(region = "account-features", usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
@@ -23,4 +24,19 @@ class AccountFeature(
 @Repository
 interface AccountFeatureRepository : AbstractJpaRepository<AccountFeature> {
   fun findByName(name: String): AccountFeature?
+
+  fun countByNameAndAccountsContains(
+    name: String,
+    account: Account,
+  ): Long
+}
+
+@Service
+class AccountFeatureService(
+  val repo: AccountFeatureRepository,
+) {
+  fun isFeatureEnabled(
+    name: String,
+    account: Account,
+  ): Boolean = repo.countByNameAndAccountsContains(name, account) > 0
 }

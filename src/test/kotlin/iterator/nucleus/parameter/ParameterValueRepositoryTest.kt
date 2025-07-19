@@ -11,6 +11,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
+import org.mockito.kotlin.description
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.test.web.servlet.MockMvc
@@ -93,14 +94,14 @@ class ParameterValueRepositoryTest
           Arguments.of(
             ParameterResolutionScenario(
               description = "no parameters defined and no values should return no results",
-              args = EffectiveParameterArgs(parameterNames = setOf("INTEREST_RATE")),
+              args = EffectiveParameterArgs(parameterNames = setOf("interestRate")),
             ),
           ),
           Arguments.of(
             ParameterResolutionScenario(
               description = "one parameter defined with no values should return no results",
-              parameters = listOf(ParameterSetup(name = "INTEREST_RATE")),
-              args = EffectiveParameterArgs(parameterNames = setOf("INTEREST_RATE")),
+              parameters = listOf(ParameterSetup(name = "interestRate")),
+              args = EffectiveParameterArgs(parameterNames = setOf("interestRate")),
             ),
           ),
           Arguments.of(
@@ -110,7 +111,7 @@ class ParameterValueRepositoryTest
               parameters =
                 listOf(
                   ParameterSetup(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     values =
                       listOf(
                         ParameterSetupValue(
@@ -122,15 +123,54 @@ class ParameterValueRepositoryTest
                 ),
               args =
                 EffectiveParameterArgs(
-                  parameterNames = setOf("INTEREST_RATE"),
+                  parameterNames = setOf("interestRate"),
                   effectiveAt = NOW,
                 ),
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     level = ParameterLevel.GLOBAL,
                     value = "0.01",
+                    effectiveFrom = NOW,
+                  ),
+                ),
+            ),
+          ),
+          Arguments.of(
+            ParameterResolutionScenario(
+              description =
+                "one parameter defined at template level should resolve to template level",
+              parameters =
+                listOf(
+                  ParameterSetup(
+                    name = "depositLimit",
+                    values =
+                      listOf(
+                        ParameterSetupValue(
+                          level = ParameterLevel.ACCOUNT_TEMPLATE,
+                          value = "0.01",
+                          resourceId = AN_ACCOUNT_TEMPLATE_ID,
+                          effectiveFrom = NOW,
+                        ),
+                      ),
+                  ),
+                ),
+              args =
+                EffectiveParameterArgs(
+                  parameterNames = setOf("depositLimit"),
+                  effectiveAt = NOW,
+                  accountTemplateId = AN_ACCOUNT_TEMPLATE_ID,
+                  customerTrancheId = null,
+                  accountId = AN_ACCOUNT_ID,
+                ),
+              expected =
+                listOf(
+                  ExpectedEffectiveParameter(
+                    name = "depositLimit",
+                    level = ParameterLevel.ACCOUNT_TEMPLATE,
+                    value = "0.01",
+                    resourceId = AN_ACCOUNT_TEMPLATE_ID,
                     effectiveFrom = NOW,
                   ),
                 ),
@@ -143,7 +183,7 @@ class ParameterValueRepositoryTest
               parameters =
                 listOf(
                   ParameterSetup(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     values =
                       listOf(
                         ParameterSetupValue(
@@ -160,13 +200,13 @@ class ParameterValueRepositoryTest
                 ),
               args =
                 EffectiveParameterArgs(
-                  parameterNames = setOf("INTEREST_RATE"),
+                  parameterNames = setOf("interestRate"),
                   accountTemplateId = AN_ACCOUNT_TEMPLATE_ID,
                 ),
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     value = "0.02",
                     level = ParameterLevel.ACCOUNT_TEMPLATE,
                     resourceId = AN_ACCOUNT_TEMPLATE_ID,
@@ -181,7 +221,7 @@ class ParameterValueRepositoryTest
               parameters =
                 listOf(
                   ParameterSetup(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     values =
                       listOf(
                         ParameterSetupValue(
@@ -198,13 +238,13 @@ class ParameterValueRepositoryTest
                 ),
               args =
                 EffectiveParameterArgs(
-                  parameterNames = setOf("INTEREST_RATE"),
+                  parameterNames = setOf("interestRate"),
                   accountTemplateId = AN_ACCOUNT_TEMPLATE_ID,
                 ),
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     value = "0.01",
                     level = ParameterLevel.GLOBAL,
                   ),
@@ -218,7 +258,7 @@ class ParameterValueRepositoryTest
               parameters =
                 listOf(
                   ParameterSetup(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     values =
                       listOf(
                         ParameterSetupValue(
@@ -240,14 +280,14 @@ class ParameterValueRepositoryTest
                 ),
               args =
                 EffectiveParameterArgs(
-                  parameterNames = setOf("INTEREST_RATE"),
+                  parameterNames = setOf("interestRate"),
                   accountTemplateId = AN_ACCOUNT_TEMPLATE_ID,
                   customerTrancheId = A_CUSTOMER_TRANCHE_ID,
                 ),
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     value = "0.03",
                     level = ParameterLevel.CUSTOMER_TRANCHE,
                     resourceId = A_CUSTOMER_TRANCHE_ID.toString(),
@@ -262,7 +302,7 @@ class ParameterValueRepositoryTest
               parameters =
                 listOf(
                   ParameterSetup(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     values =
                       listOf(
                         ParameterSetupValue(
@@ -284,14 +324,14 @@ class ParameterValueRepositoryTest
                 ),
               args =
                 EffectiveParameterArgs(
-                  parameterNames = setOf("INTEREST_RATE"),
+                  parameterNames = setOf("interestRate"),
                   accountTemplateId = AN_ACCOUNT_TEMPLATE_ID,
                   customerTrancheId = A_CUSTOMER_TRANCHE_ID,
                 ),
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     value = "0.02",
                     level = ParameterLevel.ACCOUNT_TEMPLATE,
                     resourceId = AN_ACCOUNT_TEMPLATE_ID,
@@ -306,7 +346,7 @@ class ParameterValueRepositoryTest
               parameters =
                 listOf(
                   ParameterSetup(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     values =
                       listOf(
                         ParameterSetupValue(
@@ -333,7 +373,7 @@ class ParameterValueRepositoryTest
                 ),
               args =
                 EffectiveParameterArgs(
-                  parameterNames = setOf("INTEREST_RATE"),
+                  parameterNames = setOf("interestRate"),
                   accountTemplateId = AN_ACCOUNT_TEMPLATE_ID,
                   customerTrancheId = A_CUSTOMER_TRANCHE_ID,
                   accountId = AN_ACCOUNT_ID,
@@ -341,7 +381,7 @@ class ParameterValueRepositoryTest
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     value = "0.04",
                     level = ParameterLevel.ACCOUNT,
                     resourceId = AN_ACCOUNT_ID.toString(),
@@ -356,7 +396,7 @@ class ParameterValueRepositoryTest
               parameters =
                 listOf(
                   ParameterSetup(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     values =
                       listOf(
                         ParameterSetupValue(
@@ -383,7 +423,7 @@ class ParameterValueRepositoryTest
                 ),
               args =
                 EffectiveParameterArgs(
-                  parameterNames = setOf("INTEREST_RATE"),
+                  parameterNames = setOf("interestRate"),
                   accountTemplateId = AN_ACCOUNT_TEMPLATE_ID,
                   customerTrancheId = A_CUSTOMER_TRANCHE_ID,
                   accountId = AN_ACCOUNT_ID,
@@ -391,7 +431,7 @@ class ParameterValueRepositoryTest
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     value = "0.03",
                     level = ParameterLevel.CUSTOMER_TRANCHE,
                     resourceId = A_CUSTOMER_TRANCHE_ID.toString(),
@@ -406,7 +446,7 @@ class ParameterValueRepositoryTest
               parameters =
                 listOf(
                   ParameterSetup(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     values =
                       listOf(
                         // The TEMPLATE level value, which should lose. Its end time
@@ -430,13 +470,13 @@ class ParameterValueRepositoryTest
                 ),
               args =
                 EffectiveParameterArgs(
-                  parameterNames = setOf("INTEREST_RATE"),
+                  parameterNames = setOf("interestRate"),
                   effectiveAt = NOW, // The query happens exactly on the boundary
                 ),
               expected =
                 listOf(
                   ExpectedEffectiveParameter(
-                    name = "INTEREST_RATE",
+                    name = "interestRate",
                     value = "0.02",
                     level = ParameterLevel.GLOBAL,
                     effectiveFrom = NOW,

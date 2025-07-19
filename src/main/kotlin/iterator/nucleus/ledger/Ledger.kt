@@ -62,6 +62,7 @@ enum class LedgerEntryType {
       )
     }
   },
+  DEPOSIT,
   ;
 
   @JsonIgnore
@@ -119,6 +120,7 @@ class LedgerEntryService(
           type = request.type,
           address = request.fromAddress,
           timestamp = request.timestamp,
+          asset = request.asset,
         ),
         LedgerEntry(
           operationId = operationId,
@@ -128,6 +130,7 @@ class LedgerEntryService(
           type = request.type,
           address = request.toAddress,
           timestamp = request.timestamp,
+          asset = request.asset,
         ),
       )
     val saved = repo.saveAll(entries)
@@ -173,6 +176,7 @@ data class CreateTransferRequest(
   val amount: BigDecimal,
   val type: LedgerEntryType,
   val timestamp: Instant,
+  val asset: String = LedgerConstants.DEFAULT_ASSET,
 )
 
 enum class LedgerEntryPhase {

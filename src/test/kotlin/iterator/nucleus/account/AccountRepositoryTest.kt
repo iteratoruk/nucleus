@@ -5,6 +5,7 @@ import iterator.nucleus.TestingFu.aValidAccount
 import iterator.nucleus.TestingFu.aValidAccountFeature
 import iterator.nucleus.TestingFu.aValidAccountTemplate
 import iterator.nucleus.TestingFu.aValidCustomerTranche
+import iterator.nucleus.TestingFu.randomAlphabetic
 import iterator.nucleus.TestingFu.randomEnum
 import jakarta.persistence.EntityManager
 import org.assertj.core.api.Assertions.assertThat
@@ -40,7 +41,7 @@ class AccountRepositoryTest
     fun `should delete feature associations when deleting an account`() {
       // given
       val account = randomValidEntity()
-      val feature = aValidAccountFeature()
+      val feature = aValidAccountFeature(name = randomAlphabetic(16).uppercase())
       persistAndFlush(listOf(account, feature))
       account.features.add(feature)
       persistAndFlush(account)

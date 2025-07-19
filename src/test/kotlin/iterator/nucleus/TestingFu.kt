@@ -154,6 +154,7 @@ object TestingFu {
     accountId: UUID = UUID.randomUUID(),
     customerTranche: CustomerTranche? = null,
     status: AccountStatus = randomEnum(),
+    features: Set<AccountFeature> = emptySet(),
   ): Account =
     Account(
       accountId = accountId,
@@ -161,6 +162,7 @@ object TestingFu {
       status = status,
       accountTemplate = accountTemplate,
       customerTranche = customerTranche,
+      features = features.toMutableSet(),
     )
 
   fun validAccountsWithIds(
@@ -203,9 +205,9 @@ object TestingFu {
       timestamp = randomInstant(),
     )
 
-  fun aValidAccountFeature(): AccountFeature =
+  fun aValidAccountFeature(name: String = randomAlphabetic(16).uppercase()): AccountFeature =
     AccountFeature(
-      name = randomAlphabetic(16).uppercase(),
+      name = name,
       config = """{"${randomWords(1).lowercase()}" : "${randomWords(1).lowercase()}"}""",
     )
 
