@@ -1,5 +1,5 @@
 package iterator.nucleus.ledger
 
-interface LedgerEntryValidator {
+interface TransferRequestValidator {
   fun validate(request: CreateTransferRequest)
 }

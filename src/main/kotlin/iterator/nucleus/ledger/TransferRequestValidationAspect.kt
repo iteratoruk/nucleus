@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component
 
 @Aspect
 @Component
-class LedgerValidationAspect(
-  val validators: List<LedgerEntryValidator>,
+class TransferRequestValidationAspect(
+  val validators: List<TransferRequestValidator>,
 ) {
   @Around(
     "execution(* iterator.nucleus.ledger.LedgerEntryService.createTransfer(..)) && args(request)",

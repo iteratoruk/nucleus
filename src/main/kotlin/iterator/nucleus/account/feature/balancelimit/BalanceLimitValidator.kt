@@ -6,7 +6,7 @@ import iterator.nucleus.ledger.CreateTransferRequest
 import iterator.nucleus.ledger.LedgerConstants
 import iterator.nucleus.ledger.LedgerEntryService
 import iterator.nucleus.ledger.LedgerEntryType
-import iterator.nucleus.ledger.LedgerEntryValidator
+import iterator.nucleus.ledger.TransferRequestValidator
 import iterator.nucleus.parameter.ParameterValueService
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
@@ -16,7 +16,7 @@ class BalanceLimitValidator(
   val features: AccountFeatureService,
   val params: ParameterValueService,
   val ledger: LedgerEntryService,
-) : LedgerEntryValidator {
+) : TransferRequestValidator {
   override fun validate(request: CreateTransferRequest) {
     if (isBalanceLimitExempt(request)) {
       return
