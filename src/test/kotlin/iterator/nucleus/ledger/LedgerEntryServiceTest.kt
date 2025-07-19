@@ -37,46 +37,6 @@ class LedgerEntryServiceTest(
   val service = LedgerEntryService(repo, kafka)
 
   @Test
-  fun `createTransfer should return empty list when amount is zero`() {
-    // when
-    val result =
-      service.createTransfer(
-        CreateTransferRequest(
-          fromAccount = mock(),
-          fromAddress = "A",
-          toAccount = mock(),
-          toAddress = "B",
-          amount = BigDecimal.ZERO,
-          type = randomEnum(),
-          timestamp = Instant.now(),
-        ),
-      )
-    // then
-    assertEquals(emptyList(), result)
-    // and repo.saveAll should never be called
-    verify(repo, never()).saveAll(any<Iterable<LedgerEntry>>())
-  }
-
-  @Test
-  fun `createTransfer should throw if amount negative`() {
-    // when / then
-    assertThrows<IllegalArgumentException> {
-      service.createTransfer(
-        CreateTransferRequest(
-          fromAccount = mock(),
-          fromAddress = "A",
-          toAccount = mock(),
-          toAddress = "B",
-          amount = BigDecimal("-10.00"),
-          type = randomEnum(),
-          timestamp = Instant.now(),
-        ),
-      )
-    }
-    verify(repo, never()).saveAll(any<Iterable<LedgerEntry>>())
-  }
-
-  @Test
   fun `createTransfer should save two entries with correct signs`() {
     // given
     val fromAccount: Account = mock()

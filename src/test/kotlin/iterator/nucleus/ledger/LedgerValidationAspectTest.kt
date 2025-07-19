@@ -6,7 +6,9 @@ import iterator.nucleus.EntityManagerHelper
 import iterator.nucleus.TestingFu.aValidAccount
 import iterator.nucleus.TestingFu.aValidAccountFeature
 import iterator.nucleus.TestingFu.aValidAccountTemplate
+import iterator.nucleus.TestingFu.randomAlphanumeric
 import iterator.nucleus.TestingFu.randomBigDecimal
+import iterator.nucleus.TestingFu.randomEnum
 import iterator.nucleus.account.feature.FeatureConstants
 import iterator.nucleus.parameter.ParameterDefinition
 import iterator.nucleus.parameter.ParameterLevel
@@ -39,6 +41,32 @@ class LedgerValidationAspectTest
     override fun entityClass(): Class<AbstractJpaEntity> = AbstractJpaEntity::class.java
 
     @Autowired lateinit var ledgerEntryService: LedgerEntryService
+
+    @Test
+    fun `ledger validation aspect should prevent zero balance transfer`() {
+      // given
+      val accountTemplate = aValidAccountTemplate()
+      persist(accountTemplate)
+      val fromAccount = aValidAccount(accountTemplate)
+      val toAccount = aValidAccount(accountTemplate)
+      persist(listOf(fromAccount, toAccount))
+
+      // when ... then
+      assertThrows<IllegalArgumentException> {
+        ledgerEntryService.createTransfer(
+          CreateTransferRequest(
+            fromAccount = fromAccount,
+            fromAddress = randomAlphanumeric(16),
+            toAccount = toAccount,
+            toAddress = randomAlphanumeric(16),
+            amount = BigDecimal.ZERO,
+            type = randomEnum(),
+            timestamp = Instant.now().truncatedToPostgresAccuracy(),
+            asset = randomAlphanumeric(16),
+          ),
+        )
+      }
+    }
 
     @Test
     fun `ledger validation aspect should prevent balance limit breach for account with balance limit feature`() {

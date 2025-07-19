@@ -105,10 +105,6 @@ class LedgerEntryService(
 
   @Transactional
   fun createTransfer(request: CreateTransferRequest): List<LedgerEntry> {
-    if (request.amount == BigDecimal.ZERO) {
-      return emptyList()
-    }
-    require(request.amount > BigDecimal.ZERO) { "Amount must be positive." }
     val operationId = UUID.randomUUID()
     val entries =
       listOf(
