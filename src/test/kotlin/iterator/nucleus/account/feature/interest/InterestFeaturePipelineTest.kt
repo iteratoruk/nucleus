@@ -17,7 +17,6 @@ import iterator.nucleus.schedule.ScheduledTaskStatus
 import iterator.nucleus.toSevenDecimalPlaces
 import iterator.nucleus.truncatedToPostgresAccuracy
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.support.GenericApplicationContext
@@ -42,7 +41,6 @@ class InterestFeaturePipelineTest
     }
 
     @Test
-    @Disabled("test is blinking, despite best efforts to fix it -- need to investigate further")
     fun `should accrue interest for one account with positive balance when the pipeline runs`() {
       // given
       val strategy = InterestAccrualStrategy.ACTUAL_365

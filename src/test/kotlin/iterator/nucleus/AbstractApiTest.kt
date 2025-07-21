@@ -1,6 +1,8 @@
 package iterator.nucleus
 
 import iterator.nucleus.audit.AuditService
+import org.junit.jupiter.api.BeforeEach
+import org.mockito.kotlin.reset
 import org.springframework.beans.factory.BeanFactory
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
@@ -28,6 +30,11 @@ abstract class AbstractApiTest(
   val mvc: MockMvc,
 ) : TestContainers {
   @MockitoBean lateinit var auditService: AuditService
+
+  @BeforeEach
+  fun resetAuditServiceMock() {
+    reset(auditService)
+  }
 }
 
 @EnableAsync
