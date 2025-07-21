@@ -91,6 +91,8 @@ class InterestFeaturePipelineTest
             totalAccrued = expectedAccrual,
             accrualType = NucleusAuditEventType.INTEREST_ACCRUED,
           ),
+        accountId = account.accountId,
+        type = NucleusAuditEventType.INTEREST_ACCRUED,
       )
       `then the scheduled task has finished with status`(
         InterestFeatureScheduledTask::class.java,
@@ -104,6 +106,8 @@ class InterestFeaturePipelineTest
             accountId = account.accountId,
             effectiveTimestamp = effectiveTimestamp,
           ),
+        accountId = account.accountId,
+        type = NucleusAuditEventType.ACCOUNT_PROCESSING_PIPELINE_FINISHED,
       )
       `then account has balance for address and asset at timestamp`(
         accountId = account.accountId,

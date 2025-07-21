@@ -1,11 +1,13 @@
 package iterator.nucleus
 
 import iterator.nucleus.audit.AuditService
+import iterator.nucleus.audit.MockAuditService
 import org.junit.jupiter.api.BeforeEach
-import org.mockito.kotlin.reset
 import org.springframework.beans.factory.BeanFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
@@ -16,7 +18,6 @@ import org.springframework.core.task.SyncTaskExecutor
 import org.springframework.scheduling.annotation.AsyncConfigurer
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.util.concurrent.Executor
@@ -29,11 +30,11 @@ abstract class AbstractApiTest(
   val ctx: GenericApplicationContext,
   val mvc: MockMvc,
 ) : TestContainers {
-  @MockitoBean lateinit var auditService: AuditService
+  @Autowired lateinit var auditService: AuditService
 
   @BeforeEach
   fun resetAuditServiceMock() {
-    reset(auditService)
+    (auditService as MockAuditService).clear()
   }
 }
 
@@ -45,6 +46,9 @@ class TestAsyncConfig : AsyncConfigurer {
 
   @Bean
   fun applicationEventMulticaster(beanFactory: BeanFactory): ApplicationEventMulticaster = SimpleApplicationEventMulticaster(beanFactory)
+
+  @Bean
+  fun auditService(publisher: ApplicationEventPublisher): AuditService = MockAuditService(publisher)
 }
 
 object ApiTestConstants {
