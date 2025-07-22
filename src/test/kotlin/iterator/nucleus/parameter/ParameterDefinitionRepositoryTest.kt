@@ -44,7 +44,7 @@ class ParameterDefinitionRepositoryTest
     }
 
     @Test
-    fun `shhould return definition given name when find by name`() {
+    fun `should return definition given name when find by name`() {
       // given
       val definition = randomValidEntity()
       persistAndFlush(definition)
