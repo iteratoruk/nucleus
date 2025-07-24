@@ -20,3 +20,14 @@ cache:
 
 script:
   - ./gradlew build
+  - docker build -t $IMAGE_NAME:$TRAVIS_COMMIT .
+  - docker tag $IMAGE_NAME:$TRAVIS_COMMIT $IMAGE_NAME:latest
+
+after_success:
+  - echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_USERNAME" --password-stdin
+  - docker push $IMAGE_NAME:$TRAVIS_COMMIT
+  - docker push $IMAGE_NAME:latest
+
+env:
+  global:
+    - IMAGE_NAME=ghcr.io/${TRAVIS_REPO_SLUG}
