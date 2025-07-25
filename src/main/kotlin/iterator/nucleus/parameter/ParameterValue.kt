@@ -43,12 +43,9 @@ class ParameterValueService(
 
   private val typesCache: ConcurrentMap<KClass<*>, JavaType> = ConcurrentHashMap()
 
-  fun <T : Any> findAndBindEffectiveParameters(
+  private fun <T : Any> bind(
     dataClass: KClass<T>,
-    effectiveAt: Instant,
-    accountId: UUID,
-    accountTemplateId: String,
-    customerTrancheId: UUID? = null,
+    fetcher: (Set<String>) -> List<EffectiveParameter>,
   ): T {
     require(dataClass.isData) { "${dataClass.simpleName} must be a data class" }
     val parameterNames =
@@ -58,19 +55,41 @@ class ParameterValueService(
           ?.mapNotNull { it.name }
           ?.toSet() ?: emptySet()
       }
-    val effectiveParameters =
-      repo
-        .findEffectiveParameters(
-          parameterNames = parameterNames,
-          effectiveAt = effectiveAt,
-          accountId = accountId,
-          accountTemplateId = accountTemplateId,
-          customerTrancheId = customerTrancheId,
-        ).associate { it.name to it.value }
+    val effectiveParameters = fetcher(parameterNames).associate { it.name to it.value }
     val javaType =
       typesCache.computeIfAbsent(dataClass) { cls -> om.typeFactory.constructType(cls.java) }
     return om.convertValue(effectiveParameters, javaType)
   }
+
+  fun <T : Any> findAndBindEffectiveParameters(
+    dataClass: KClass<T>,
+    effectiveAt: Instant,
+    accountId: UUID,
+    accountTemplateId: String,
+    customerTrancheId: UUID? = null,
+  ): T =
+    bind(dataClass) { names ->
+      repo.findEffectiveParameters(
+        parameterNames = names,
+        effectiveAt = effectiveAt,
+        accountId = accountId,
+        accountTemplateId = accountTemplateId,
+        customerTrancheId = customerTrancheId,
+      )
+    }
+
+  fun <T : Any> findAndBindEffectiveParameters(
+    dataClass: KClass<T>,
+    effectiveAt: Instant,
+    accountTemplateId: String,
+  ): T =
+    bind(dataClass) { names ->
+      repo.findEffectiveTemplateParameters(
+        parameterNames = names,
+        effectiveAt = effectiveAt,
+        accountTemplateId = accountTemplateId,
+      )
+    }
 
   @Transactional
   fun createParameterValue(
@@ -168,6 +187,61 @@ interface ParameterValueRepository : AbstractJpaRepository<ParameterValue> {
     @Param("accountId") accountId: UUID,
     @Param("accountTemplateId") accountTemplateId: String,
     @Param("customerTrancheId") customerTrancheId: UUID? = null,
+  ): List<EffectiveParameter>
+
+  @Query(
+    value =
+      """
+        WITH ranked_values AS (
+            SELECT
+                pv.id as pv_id,
+                pd.name as name,
+                pv.value as value,
+                pv.level as level,
+                pv.resource_id as resource_id,
+                pv.effective_from as effective_from,
+                pv.effective_to as effective_to,
+                CASE pv.level
+                    WHEN 'ACCOUNT_TEMPLATE' THEN 2
+                    WHEN 'GLOBAL' THEN 1
+                    ELSE 0
+                END as level_priority,
+                ROW_NUMBER() OVER (
+                    PARTITION BY pd.name
+                    ORDER BY
+                        CASE pv.level
+                            WHEN 'ACCOUNT_TEMPLATE' THEN 2
+                            WHEN 'GLOBAL' THEN 1
+                            ELSE 0
+                        END DESC,
+                        pv.effective_from DESC
+                ) as rn
+            FROM parameter_value pv
+            JOIN parameter_definition pd ON pv.definition_id = pd.id
+            WHERE pd.name IN (:parameterNames)
+              AND pv.effective_from <= :effectiveAt
+              AND (pv.effective_to IS NULL OR pv.effective_to > :effectiveAt)
+              AND (
+                (pv.level = 'ACCOUNT_TEMPLATE' AND pv.resource_id = :accountTemplateId) OR
+                (pv.level = 'GLOBAL')
+              )
+        )
+        SELECT
+            name,
+            value,
+            level,
+            resource_id,
+            effective_from,
+            effective_to
+        FROM ranked_values
+        WHERE rn = 1
+    """,
+    nativeQuery = true,
+  )
+  fun findEffectiveTemplateParameters(
+    @Param("parameterNames") parameterNames: Set<String>,
+    @Param("effectiveAt") effectiveAt: Instant,
+    @Param("accountTemplateId") accountTemplateId: String,
   ): List<EffectiveParameter>
 }
 
