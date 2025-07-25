@@ -110,6 +110,72 @@ class ParameterValueServiceTest(
   }
 
   @Test
+  fun `should bind template parameter values`() {
+    // given
+    val str = randomAlphanumeric(16)
+    val now = Instant.now()
+    val accountTemplateId = randomAlphanumeric(32)
+    val expected =
+      TestParams(
+        stringProp = str,
+        intProp = randomInt(),
+        boolProp = randomBoolean(),
+        doubleProp = randomDouble(),
+        floatProp = randomFloat(),
+        bigDecimalProp = randomBigDecimal(),
+        longProp = randomLong(),
+        dateProp = randomLocalDate(),
+        datetimeProp = randomLocalDateTimeInThePast(),
+        instantProp = randomInstant(),
+      )
+    val effectiveParams =
+      listOf(
+        param("stringProp", expected.stringProp),
+        param("intProp", expected.intProp.toString()),
+        param("boolProp", expected.boolProp.toString()),
+        param("doubleProp", expected.doubleProp.toString()),
+        param("floatProp", expected.floatProp.toString()),
+        param("bigDecimalProp", expected.bigDecimalProp.toString()),
+        param("longProp", expected.longProp.toString()),
+        param("dateProp", expected.dateProp.toString()),
+        param("datetimeProp", expected.datetimeProp.toString()),
+        param("instantProp", expected.instantProp.toString()),
+      )
+    given {
+      repo.findEffectiveTemplateParameters(
+        parameterNames =
+          eq(
+            setOf(
+              "stringProp",
+              "intProp",
+              "boolProp",
+              "doubleProp",
+              "floatProp",
+              "bigDecimalProp",
+              "longProp",
+              "dateProp",
+              "datetimeProp",
+              "instantProp",
+            ),
+          ),
+        effectiveAt = eq(now),
+        accountTemplateId = eq(accountTemplateId),
+      )
+    }.willReturn(effectiveParams)
+
+    // when
+    val actual =
+      service.findAndBindEffectiveParameters(
+        TestParams::class,
+        now,
+        accountTemplateId,
+      )
+
+    // then
+    assertThat(actual).isEqualTo(expected)
+  }
+
+  @Test
   fun `should throw given request to bind to class that is not data class when find and bind`() {
     assertThrows<IllegalArgumentException> {
       service.findAndBindEffectiveParameters(
@@ -118,6 +184,17 @@ class ParameterValueServiceTest(
         UUID.randomUUID(),
         randomUUID(),
         UUID.randomUUID(),
+      )
+    }
+  }
+
+  @Test
+  fun `should throw given request to bind to class that is not data class when find and bind template`() {
+    assertThrows<IllegalArgumentException> {
+      service.findAndBindEffectiveParameters(
+        NotDataClass::class,
+        Instant.now(),
+        randomAlphanumeric(8),
       )
     }
   }

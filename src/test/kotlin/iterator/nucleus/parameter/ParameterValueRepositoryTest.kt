@@ -485,6 +485,112 @@ class ParameterValueRepositoryTest
             ),
           ),
         )
+
+      @JvmStatic
+      fun templateParameterResolutionScenarios(): Stream<Arguments> =
+        Stream.of(
+          Arguments.of(
+            ParameterResolutionScenario(
+              description = "template resolver with no values returns no results",
+              args = EffectiveParameterArgs(parameterNames = setOf("interestRate")),
+            ),
+          ),
+          Arguments.of(
+            ParameterResolutionScenario(
+              description = "template resolver returns global value when only global defined",
+              parameters =
+                listOf(
+                  ParameterSetup(
+                    name = "interestRate",
+                    values = listOf(ParameterSetupValue(ParameterLevel.GLOBAL, "0.01")),
+                  ),
+                ),
+              args = EffectiveParameterArgs(parameterNames = setOf("interestRate")),
+              expected =
+                listOf(
+                  ExpectedEffectiveParameter(
+                    name = "interestRate",
+                    value = "0.01",
+                    level = ParameterLevel.GLOBAL,
+                  ),
+                ),
+            ),
+          ),
+          Arguments.of(
+            ParameterResolutionScenario(
+              description = "template resolver returns template value overriding global",
+              parameters =
+                listOf(
+                  ParameterSetup(
+                    name = "interestRate",
+                    values =
+                      listOf(
+                        ParameterSetupValue(ParameterLevel.GLOBAL, "0.01"),
+                        ParameterSetupValue(
+                          level = ParameterLevel.ACCOUNT_TEMPLATE,
+                          value = "0.02",
+                          resourceId = AN_ACCOUNT_TEMPLATE_ID,
+                        ),
+                      ),
+                  ),
+                ),
+              args =
+                EffectiveParameterArgs(
+                  parameterNames = setOf("interestRate"),
+                  accountTemplateId = AN_ACCOUNT_TEMPLATE_ID,
+                ),
+              expected =
+                listOf(
+                  ExpectedEffectiveParameter(
+                    name = "interestRate",
+                    value = "0.02",
+                    level = ParameterLevel.ACCOUNT_TEMPLATE,
+                    resourceId = AN_ACCOUNT_TEMPLATE_ID,
+                  ),
+                ),
+            ),
+          ),
+          Arguments.of(
+            ParameterResolutionScenario(
+              description = "template resolver ignores overrides at other levels",
+              parameters =
+                listOf(
+                  ParameterSetup(
+                    name = "interestRate",
+                    values =
+                      listOf(
+                        ParameterSetupValue(ParameterLevel.GLOBAL, "0.01"),
+                        ParameterSetupValue(
+                          level = ParameterLevel.ACCOUNT_TEMPLATE,
+                          value = "0.02",
+                          resourceId = AN_ACCOUNT_TEMPLATE_ID,
+                        ),
+                        ParameterSetupValue(
+                          level = ParameterLevel.ACCOUNT,
+                          value = "0.03",
+                          resourceId = AN_ACCOUNT_ID.toString(),
+                        ),
+                      ),
+                  ),
+                ),
+              args =
+                EffectiveParameterArgs(
+                  parameterNames = setOf("interestRate"),
+                  accountTemplateId = AN_ACCOUNT_TEMPLATE_ID,
+                  accountId = AN_ACCOUNT_ID,
+                ),
+              expected =
+                listOf(
+                  ExpectedEffectiveParameter(
+                    name = "interestRate",
+                    value = "0.02",
+                    level = ParameterLevel.ACCOUNT_TEMPLATE,
+                    resourceId = AN_ACCOUNT_TEMPLATE_ID,
+                  ),
+                ),
+            ),
+          ),
+        )
     }
 
     override fun randomValidEntity(): ParameterValue {
@@ -545,6 +651,40 @@ class ParameterValueRepositoryTest
           accountId = scenario.args.accountId,
           accountTemplateId = scenario.args.accountTemplateId,
           customerTrancheId = scenario.args.customerTrancheId,
+        )
+
+      // then
+      assertThat(actual.map { ExpectedEffectiveParameter.fromInterface(it) })
+        .isEqualTo(scenario.expected)
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("templateParameterResolutionScenarios")
+    fun `expected template parameter value resolution should conform to scenario expectations`(scenario: ParameterResolutionScenario) {
+      // given
+      scenario.parameters.forEach { d ->
+        val definition = ParameterDefinition(name = d.name)
+        persistAndFlush(definition)
+        d.values.forEach { v ->
+          val value =
+            ParameterValue(
+              definition = definition,
+              level = v.level,
+              value = v.value,
+              resourceId = v.resourceId,
+              effectiveFrom = v.effectiveFrom,
+              effectiveTo = v.effectiveTo,
+            )
+          persistAndFlush(value)
+        }
+      }
+
+      // when
+      val actual =
+        repo.findEffectiveTemplateParameters(
+          parameterNames = scenario.args.parameterNames,
+          effectiveAt = scenario.args.effectiveAt,
+          accountTemplateId = scenario.args.accountTemplateId,
         )
 
       // then
