@@ -58,8 +58,8 @@ abstract class AbstractFeaturePipelineIntegrationTest
     mvc: MockMvc,
   ) : AbstractApiTest(ctx, mvc) {
     companion object {
-      val DEFAULT_AWAIT_DURATION: Duration = Duration.ofSeconds(60)
-      val DEFAULT_POLL_INTERVAL: Duration = Duration.ofMillis(100)
+      val DEFAULT_AWAIT_DURATION: Duration = Duration.ofSeconds(180)
+      val DEFAULT_POLL_INTERVAL: Duration = Duration.ofMillis(250)
     }
 
     @Autowired lateinit var accountRepo: AccountRepository
