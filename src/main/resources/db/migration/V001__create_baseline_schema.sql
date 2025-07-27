@@ -1,13 +1,14 @@
 create table "account_template"
 (
-  "id"                  bigserial                   not null,
-  "version"             int8                        not null,
-  "created_by"          varchar(255),
-  "created_date"        timestamp(6) with time zone not null,
-  "last_modified_by"    varchar(255),
-  "last_modified_date"  timestamp(6) with time zone,
-  "account_template_id" varchar(255)                not null,
-  "display_name"        varchar(255),
+  "id"                     bigserial                   not null,
+  "version"                int8                        not null,
+  "created_by"             varchar(255),
+  "created_date"           timestamp(6) with time zone not null,
+  "last_modified_by"       varchar(255),
+  "last_modified_date"     timestamp(6) with time zone,
+  "account_template_id"    varchar(255)                not null,
+  "display_name"           varchar(255),
+  "current_representation" jsonb                       not null,
   primary key ("id")
 );
 

@@ -44,3 +44,7 @@ object Serialization {
       .configure(SerializationFeature.WRITE_DATES_WITH_ZONE_ID, true)
       .setSerializationInclusion(JsonInclude.Include.NON_NULL)
 }
+
+object Uris {
+  const val API_V1 = "/api/v1"
+}

@@ -2,6 +2,7 @@ package iterator.nucleus.account.feature
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import iterator.nucleus.AbstractApiTest
+import iterator.nucleus.TestingFu.aValidAccountTemplateRepresentation
 import iterator.nucleus.TestingFu.randomBigDecimal
 import iterator.nucleus.TestingFu.randomUUID
 import iterator.nucleus.TestingFu.randomWords
@@ -14,6 +15,7 @@ import iterator.nucleus.account.AccountStatus
 import iterator.nucleus.account.InternalAccountRole
 import iterator.nucleus.account.template.AccountTemplate
 import iterator.nucleus.account.template.AccountTemplateRepository
+import iterator.nucleus.account.template.AccountTemplateRepresentation
 import iterator.nucleus.audit.AbstractAccountLevelAuditEvent
 import iterator.nucleus.audit.AbstractAuditEvent
 import iterator.nucleus.audit.MockAuditService
@@ -111,9 +113,14 @@ abstract class AbstractFeaturePipelineIntegrationTest
     fun `create account template`(
       accountTemplateId: String = randomUUID(),
       displayName: String = randomWords(3),
+      currentRepresentation: AccountTemplateRepresentation = aValidAccountTemplateRepresentation(),
     ): AccountTemplate =
       accountTemplateRepo.save(
-        AccountTemplate(accountTemplateId = accountTemplateId, displayName = displayName),
+        AccountTemplate(
+          accountTemplateId = accountTemplateId,
+          displayName = displayName,
+          currentRepresentation = currentRepresentation,
+        ),
       )
 
     fun `create customer account`(

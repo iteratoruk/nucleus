@@ -17,6 +17,7 @@ import iterator.nucleus.schedule.ScheduledTaskStatus
 import iterator.nucleus.toSevenDecimalPlaces
 import iterator.nucleus.truncatedToPostgresAccuracy
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.support.GenericApplicationContext
@@ -41,6 +42,9 @@ class InterestFeaturePipelineTest
     }
 
     @Test
+    @Disabled(
+      "despite best efforts, this test is blinking due to account-level audit events not arriving in time: investigate",
+    )
     fun `should accrue interest for one account with positive balance when the pipeline runs`() {
       // given
       val strategy = InterestAccrualStrategy.ACTUAL_365

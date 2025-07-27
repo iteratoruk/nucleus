@@ -2,9 +2,16 @@ package iterator.nucleus.account.template
 
 import iterator.nucleus.AbstractJpaRepository
 import iterator.nucleus.AbstractMutableJpaEntity
+import iterator.nucleus.account.feature.balancelimit.BalanceLimitFeatureParameters
+import iterator.nucleus.account.feature.interest.InterestFeatureParameters
 import jakarta.persistence.Entity
 import org.hibernate.annotations.Cache
 import org.hibernate.annotations.CacheConcurrencyStrategy
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Repository
 
 @Entity
@@ -12,6 +19,27 @@ import org.springframework.stereotype.Repository
 class AccountTemplate(
   var accountTemplateId: String,
   var displayName: String,
+  @JdbcTypeCode(SqlTypes.JSON) var currentRepresentation: AccountTemplateRepresentation,
 ) : AbstractMutableJpaEntity()
 
-@Repository interface AccountTemplateRepository : AbstractJpaRepository<AccountTemplate>
+data class AccountTemplateRepresentation(
+  val accountTemplateId: String,
+  val displayName: String,
+  val interestFeatureEnabled: Boolean = false,
+  val interestFeatureParams: InterestFeatureParameters? = null,
+  val balanceLimitFeatureEnabled: Boolean = false,
+  val balanceLimitFeatureParams: BalanceLimitFeatureParameters? = null,
+)
+
+@Repository
+interface AccountTemplateRepository : AbstractJpaRepository<AccountTemplate> {
+  companion object {
+    const val DEFAULT_PAGE_NUMBER = 0
+    const val DEFAULT_PAGE_SIZE = 50
+  }
+
+  fun findByCreatedBy(
+    createdBy: String,
+    page: Pageable = PageRequest.of(DEFAULT_PAGE_NUMBER, DEFAULT_PAGE_SIZE),
+  ): Page<AccountTemplate>
+}

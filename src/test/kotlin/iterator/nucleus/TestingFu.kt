@@ -7,10 +7,12 @@ import iterator.nucleus.account.AccountConstants
 import iterator.nucleus.account.AccountFeature
 import iterator.nucleus.account.AccountStatus
 import iterator.nucleus.account.InternalAccountRole
+import iterator.nucleus.account.feature.balancelimit.BalanceLimitFeatureParameters
 import iterator.nucleus.account.feature.interest.InterestFeatureConfigurationProperties
 import iterator.nucleus.account.feature.interest.InterestFeatureParameters
 import iterator.nucleus.account.feature.interest.InterestFeatureScheduledTaskConfigurationProperties
 import iterator.nucleus.account.template.AccountTemplate
+import iterator.nucleus.account.template.AccountTemplateRepresentation
 import iterator.nucleus.customer.CustomerTranche
 import iterator.nucleus.kafka.KafkaConfigurationProperties
 import iterator.nucleus.kafka.KafkaRetryConfigurationProperties
@@ -191,7 +193,22 @@ object TestingFu {
 
   fun aValidCustomerTranche(): CustomerTranche = CustomerTranche(customerTrancheId = UUID.randomUUID(), displayName = randomWords(4))
 
-  fun aValidAccountTemplate(): AccountTemplate = AccountTemplate(accountTemplateId = randomUUID(), displayName = randomWords(3))
+  fun aValidAccountTemplate(): AccountTemplate =
+    AccountTemplate(
+      accountTemplateId = randomUUID(),
+      displayName = randomWords(3),
+      currentRepresentation = aValidAccountTemplateRepresentation(),
+    )
+
+  fun aValidAccountTemplateRepresentation(): AccountTemplateRepresentation =
+    AccountTemplateRepresentation(
+      accountTemplateId = randomUUID(),
+      displayName = randomWords(3),
+      interestFeatureEnabled = randomBoolean(),
+      interestFeatureParams = randomInterestFeatureParameters(),
+      balanceLimitFeatureEnabled = randomBoolean(),
+      balanceLimitFeatureParams = randomBalanceLimitFeatureParameters(),
+    )
 
   fun aValidLedgerEntry(account: Account) =
     LedgerEntry(
@@ -249,4 +266,7 @@ object TestingFu {
       interestApplicationDay = randomInt(1, 31),
       interestApplicationMonth = randomInt(1, 12),
     )
+
+  fun randomBalanceLimitFeatureParameters(): BalanceLimitFeatureParameters =
+    BalanceLimitFeatureParameters(balanceLimit = randomBigDecimal(100000.00, 1000000.00))
 }
