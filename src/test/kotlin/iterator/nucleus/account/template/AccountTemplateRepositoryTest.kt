@@ -43,18 +43,16 @@ class AccountTemplateRepositoryTest
       val template2 = randomValidEntity().apply { createdBy = clientB }
       val template3 = randomValidEntity().apply { createdBy = clientA }
       persistAndFlush(listOf(template1, template2, template3))
+      val page = PageRequest.of(0, 20)
 
       // when
-      val actual = repo.findByCreatedBy(clientA)
+      val actual = repo.findByCreatedBy(clientA, page)
 
       // then
       val expected =
         PageImpl(
           listOf(template1, template3),
-          PageRequest.of(
-            AccountTemplateRepository.DEFAULT_PAGE_NUMBER,
-            AccountTemplateRepository.DEFAULT_PAGE_SIZE,
-          ),
+          page,
           2,
         )
       assertThat(actual).isEqualTo(expected)

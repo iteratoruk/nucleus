@@ -3,6 +3,7 @@ package iterator.nucleus.account.template
 import iterator.nucleus.NucleusHeaders
 import iterator.nucleus.Uris
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
@@ -20,5 +21,6 @@ class AccountTemplateController(
   @GetMapping
   fun handleListAccountTemplates(
     @RequestHeader(NucleusHeaders.CLIENT_ID) clientId: String,
-  ): Page<AccountTemplateRepresentation> = repo.findByCreatedBy(clientId).map { it.currentRepresentation }
+    pageable: Pageable,
+  ): Page<AccountTemplateRepresentation> = repo.findByCreatedBy(clientId, pageable).map { it.currentRepresentation }
 }

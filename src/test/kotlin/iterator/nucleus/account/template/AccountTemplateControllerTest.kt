@@ -18,6 +18,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEnti
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
 import org.springframework.test.annotation.Rollback
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -36,11 +37,7 @@ class AccountTemplateControllerTest
     EntityManagerHelper<AbstractJpaEntity> {
     val baseUri = "${Uris.API_V1}${AccountTemplateController.REL}"
 
-    val defaultPageable =
-      PageRequest.of(
-        AccountTemplateRepository.DEFAULT_PAGE_NUMBER,
-        AccountTemplateRepository.DEFAULT_PAGE_SIZE,
-      )
+    val defaultPageable = PageRequest.of(0, 20)
 
     @Test
     fun `should return bad request given X-Client-ID header missing when list templates`() {
@@ -64,10 +61,10 @@ class AccountTemplateControllerTest
       // given
       val clientA = randomAlphanumeric(16)
       val clientB = randomAlphanumeric(16)
-      val template1 = aValidAccountTemplate().apply { createdBy = clientA }
-      val template2 = aValidAccountTemplate().apply { createdBy = clientB }
-      val template3 = aValidAccountTemplate().apply { createdBy = clientA }
-      persistAndFlush(listOf(template1, template2, template3))
+      val template1 = templateFor(clientA, "alpha")
+      val template2 = templateFor(clientB, "beta")
+      val template3 = templateFor(clientA, "gamma")
+      persistTemplates(template1, template2, template3)
 
       // when ... then
       mvc
@@ -92,6 +89,82 @@ class AccountTemplateControllerTest
         )
     }
 
+    @Test
+    fun `should return second page when list templates`() {
+      // given
+      val client = randomAlphanumeric(16)
+      val templates =
+        listOf(
+          templateFor(client, "alpha"),
+          templateFor(client, "beta"),
+          templateFor(client, "charlie"),
+        )
+      persistTemplates(*templates.toTypedArray())
+
+      val pageRequest = PageRequest.of(1, 2, Sort.by("displayName").ascending())
+
+      // when ... then
+      mvc
+        .perform(
+          get(baseUri)
+            .header(NucleusHeaders.CLIENT_ID, client)
+            .param("page", "1")
+            .param("size", "2")
+            .param("sort", "displayName,asc"),
+        ).andExpect(status().isOk)
+        .andExpect(
+          restResource(PageResult::class.java)
+            .containsOnly(
+              pageOf(
+                elements = listOf(templates[2].currentRepresentation),
+                totalElements = 3,
+                pageable = pageRequest,
+                last = true,
+                pageNumber = 1,
+                totalPages = 2,
+              ),
+            ),
+        )
+    }
+
+    @Test
+    fun `should sort account templates in descending order by display name`() {
+      // given
+      val client = randomAlphanumeric(16)
+      val templates =
+        listOf(
+          templateFor(client, "alpha"),
+          templateFor(client, "beta"),
+          templateFor(client, "charlie"),
+        )
+      persistTemplates(*templates.toTypedArray())
+      val pageRequest = PageRequest.of(0, 20, Sort.by("displayName").descending())
+
+      // when ... then
+      mvc
+        .perform(
+          get(baseUri).header(NucleusHeaders.CLIENT_ID, client).param("sort", "displayName,desc"),
+        ).andExpect(status().isOk)
+        .andExpect(
+          restResource(PageResult::class.java)
+            .containsOnly(
+              pageOf(
+                elements =
+                  listOf(
+                    templates[2].currentRepresentation,
+                    templates[1].currentRepresentation,
+                    templates[0].currentRepresentation,
+                  ),
+                totalElements = 3,
+                pageable = pageRequest,
+                last = true,
+                pageNumber = 0,
+                totalPages = 1,
+              ),
+            ),
+        )
+    }
+
     override fun entityClass(): Class<AbstractJpaEntity> = AbstractJpaEntity::class.java
 
     private fun pageOf(
@@ -99,40 +172,53 @@ class AccountTemplateControllerTest
       totalElements: Long,
       pageable: Pageable,
       last: Boolean = false,
-      pageNumber: Int = 0,
+      pageNumber: Int = pageable.pageNumber,
       totalPages: Int = 1,
-    ): PageResult =
-      PageResult(
+    ): PageResult {
+      val sort = sortResultOf(pageable.sort)
+      return PageResult(
         content = elements,
-        pageable =
-          PageableResult(
-            pageNumber = pageable.pageNumber,
-            pageSize = pageable.pageSize,
-            sort =
-              SortResult(
-                sorted = pageable.sort.isSorted,
-                unsorted = pageable.sort.isUnsorted,
-                empty = pageable.sort.isEmpty,
-              ),
-            offset = pageable.offset,
-            paged = pageable.isPaged,
-            unpaged = pageable.isUnpaged,
-          ),
+        pageable = pageableResultOf(pageable, sort),
         last = last,
         totalPages = totalPages,
         totalElements = totalElements,
         first = pageable.isPaged && pageable.pageNumber == 0,
         size = pageable.pageSize,
         number = pageNumber,
-        sort =
-          SortResult(
-            sorted = pageable.sort.isSorted,
-            unsorted = pageable.sort.isUnsorted,
-            empty = pageable.sort.isEmpty,
-          ),
+        sort = sort,
         numberOfElements = elements.size,
         empty = elements.isEmpty(),
       )
+    }
+
+    private fun pageableResultOf(
+      pageable: Pageable,
+      sort: SortResult,
+    ): PageableResult =
+      PageableResult(
+        pageNumber = pageable.pageNumber,
+        pageSize = pageable.pageSize,
+        sort = sort,
+        offset = pageable.offset,
+        paged = pageable.isPaged,
+        unpaged = pageable.isUnpaged,
+      )
+
+    private fun sortResultOf(sort: Sort): SortResult = SortResult(sorted = sort.isSorted, unsorted = sort.isUnsorted, empty = sort.isEmpty)
+
+    private fun templateFor(
+      clientId: String,
+      displayName: String,
+    ): AccountTemplate {
+      val template = aValidAccountTemplate().apply { createdBy = clientId }
+      template.displayName = displayName
+      template.currentRepresentation = template.currentRepresentation.copy(displayName = displayName)
+      return template
+    }
+
+    private fun persistTemplates(vararg templates: AccountTemplate) {
+      persistAndFlush(templates.toList())
+    }
   }
 
 data class PageResult(
