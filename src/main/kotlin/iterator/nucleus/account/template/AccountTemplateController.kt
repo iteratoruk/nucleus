@@ -22,6 +22,5 @@ class AccountTemplateController(
   fun handleListAccountTemplates(
     @RequestHeader(NucleusHeaders.CLIENT_ID) clientId: String,
     pageable: Pageable,
-  ): Page<AccountTemplateRepresentation> =
-    repo.findByCreatedBy(clientId, pageable).map { it.currentRepresentation }
+  ): Page<AccountTemplateRepresentation> = repo.findByCreatedBy(clientId, pageable).map { it.currentRepresentation }
 }

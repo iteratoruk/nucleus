@@ -10,7 +10,6 @@ import org.hibernate.annotations.CacheConcurrencyStrategy
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Repository
 
@@ -33,13 +32,8 @@ data class AccountTemplateRepresentation(
 
 @Repository
 interface AccountTemplateRepository : AbstractJpaRepository<AccountTemplate> {
-  companion object {
-    const val DEFAULT_PAGE_NUMBER = 0
-    const val DEFAULT_PAGE_SIZE = 50
-  }
-
   fun findByCreatedBy(
     createdBy: String,
-    page: Pageable = PageRequest.of(DEFAULT_PAGE_NUMBER, DEFAULT_PAGE_SIZE),
+    page: Pageable,
   ): Page<AccountTemplate>
 }

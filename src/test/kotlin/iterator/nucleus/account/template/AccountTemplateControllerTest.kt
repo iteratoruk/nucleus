@@ -37,11 +37,7 @@ class AccountTemplateControllerTest
     EntityManagerHelper<AbstractJpaEntity> {
     val baseUri = "${Uris.API_V1}${AccountTemplateController.REL}"
 
-    val defaultPageable =
-      PageRequest.of(
-        AccountTemplateRepository.DEFAULT_PAGE_NUMBER,
-        AccountTemplateRepository.DEFAULT_PAGE_SIZE,
-      )
+    val defaultPageable = PageRequest.of(0, 20)
 
     @Test
     fun `should return bad request given X-Client-ID header missing when list templates`() {
@@ -115,8 +111,7 @@ class AccountTemplateControllerTest
             .param("page", "1")
             .param("size", "2")
             .param("sort", "displayName,asc"),
-        )
-        .andExpect(status().isOk)
+        ).andExpect(status().isOk)
         .andExpect(
           restResource(PageResult::class.java)
             .containsOnly(
@@ -143,22 +138,13 @@ class AccountTemplateControllerTest
           templateFor(client, "charlie"),
         )
       persistTemplates(*templates.toTypedArray())
-
-      val pageRequest =
-        PageRequest.of(
-          AccountTemplateRepository.DEFAULT_PAGE_NUMBER,
-          AccountTemplateRepository.DEFAULT_PAGE_SIZE,
-          Sort.by("displayName").descending(),
-        )
+      val pageRequest = PageRequest.of(0, 20, Sort.by("displayName").descending())
 
       // when ... then
       mvc
         .perform(
-          get(baseUri)
-            .header(NucleusHeaders.CLIENT_ID, client)
-            .param("sort", "displayName,desc"),
-        )
-        .andExpect(status().isOk)
+          get(baseUri).header(NucleusHeaders.CLIENT_ID, client).param("sort", "displayName,desc"),
+        ).andExpect(status().isOk)
         .andExpect(
           restResource(PageResult::class.java)
             .containsOnly(
@@ -205,7 +191,10 @@ class AccountTemplateControllerTest
       )
     }
 
-    private fun pageableResultOf(pageable: Pageable, sort: SortResult): PageableResult =
+    private fun pageableResultOf(
+      pageable: Pageable,
+      sort: SortResult,
+    ): PageableResult =
       PageableResult(
         pageNumber = pageable.pageNumber,
         pageSize = pageable.pageSize,
@@ -215,14 +204,15 @@ class AccountTemplateControllerTest
         unpaged = pageable.isUnpaged,
       )
 
-    private fun sortResultOf(sort: Sort): SortResult =
-      SortResult(sorted = sort.isSorted, unsorted = sort.isUnsorted, empty = sort.isEmpty)
+    private fun sortResultOf(sort: Sort): SortResult = SortResult(sorted = sort.isSorted, unsorted = sort.isUnsorted, empty = sort.isEmpty)
 
-    private fun templateFor(clientId: String, displayName: String): AccountTemplate {
+    private fun templateFor(
+      clientId: String,
+      displayName: String,
+    ): AccountTemplate {
       val template = aValidAccountTemplate().apply { createdBy = clientId }
       template.displayName = displayName
-      template.currentRepresentation =
-        template.currentRepresentation.copy(displayName = displayName)
+      template.currentRepresentation = template.currentRepresentation.copy(displayName = displayName)
       return template
     }
 
