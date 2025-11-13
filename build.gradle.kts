@@ -2,16 +2,16 @@ import io.gitlab.arturbosch.detekt.Detekt
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-	id("org.springframework.boot") version "3.4.6"
+	id("org.springframework.boot") version "3.5.7"
 	id("io.spring.dependency-management") version "1.1.7"
-	id("com.diffplug.spotless") version "7.0.3"
+	id("com.diffplug.spotless") version "8.0.0"
 	id("com.adarshr.test-logger") version "4.0.0"
-	id("org.owasp.dependencycheck") version "12.1.1"
-	id("com.gorylenko.gradle-git-properties") version "2.5.0"
-	id("com.github.ben-manes.versions") version "0.52.0"
-	id("org.sonarqube") version "6.2.0.5505"
+	id("org.owasp.dependencycheck") version "12.1.9"
+	id("com.gorylenko.gradle-git-properties") version "2.5.3"
+	id("com.github.ben-manes.versions") version "0.53.0"
+	id("org.sonarqube") version "7.0.1.6134"
 	id("io.gitlab.arturbosch.detekt") version "1.23.8"
-	id("org.jreleaser") version "1.18.0"
+	id("org.jreleaser") version "1.21.0"
 	kotlin("jvm") version "2.0.21"
 	kotlin("plugin.allopen") version "2.0.21"
 	kotlin("plugin.jpa") version "2.0.21"
@@ -40,7 +40,7 @@ repositories {
 	mavenCentral()
 }
 
-val springCloudVersion = "2024.0.0"
+val springCloudVersion = "2025.0.0"
 
 dependencies {
 	/* Spring Boot starters */
@@ -56,20 +56,20 @@ dependencies {
 	implementation("com.fasterxml.jackson.core:jackson-databind")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
   implementation("com.github.java-json-tools:json-patch:1.13")
-	implementation("commons-io:commons-io:2.19.0")
-  implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.10")
+	implementation("commons-io:commons-io:2.21.0")
+  implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.12.0")
 	implementation("org.apache.commons:commons-lang3")
   implementation("org.flywaydb:flyway-core")
   implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
-  implementation("org.redisson:redisson:3.48.0")
-  implementation("org.redisson:redisson-hibernate-6:3.48.0")
+  implementation("org.redisson:redisson:3.52.0")
+  implementation("org.redisson:redisson-hibernate-6:3.52.0")
   implementation("org.springframework:spring-aspects")
   implementation("org.springframework.kafka:spring-kafka")
   implementation("org.springframework.retry:spring-retry")
 
 	/* Runtime dependencies */
-	runtimeOnly("net.logstash.logback:logstash-logback-encoder:8.1")
+	runtimeOnly("net.logstash.logback:logstash-logback-encoder:9.0")
   runtimeOnly("org.postgresql:postgresql")
 
 	/* Development dependencies */
@@ -82,7 +82,7 @@ dependencies {
 	testImplementation("org.awaitility:awaitility:4.3.0")
 	testImplementation("org.awaitility:awaitility-kotlin:4.3.0")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-	testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+	testImplementation("org.mockito.kotlin:mockito-kotlin:6.1.0")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("org.springframework.boot:spring-boot-testcontainers")
   testImplementation("org.springframework.kafka:spring-kafka-test")
