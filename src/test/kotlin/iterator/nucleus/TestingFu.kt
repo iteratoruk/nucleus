@@ -2,25 +2,11 @@ package iterator.nucleus
 
 import com.thedeanda.lorem.Lorem
 import com.thedeanda.lorem.LoremIpsum
-import iterator.nucleus.account.Account
-import iterator.nucleus.account.AccountConstants
-import iterator.nucleus.account.AccountFeature
-import iterator.nucleus.account.AccountStatus
-import iterator.nucleus.account.InternalAccountRole
-import iterator.nucleus.account.feature.balancelimit.BalanceLimitFeatureParameters
-import iterator.nucleus.account.feature.interest.InterestFeatureConfigurationProperties
-import iterator.nucleus.account.feature.interest.InterestFeatureParameters
-import iterator.nucleus.account.feature.interest.InterestFeatureScheduledTaskConfigurationProperties
-import iterator.nucleus.account.template.AccountTemplate
-import iterator.nucleus.account.template.AccountTemplateRepresentation
-import iterator.nucleus.customer.CustomerTranche
 import iterator.nucleus.kafka.KafkaConfigurationProperties
 import iterator.nucleus.kafka.KafkaRetryConfigurationProperties
-import iterator.nucleus.ledger.LedgerEntry
 import org.apache.commons.lang3.RandomStringUtils
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -151,98 +137,6 @@ object TestingFu {
 
   // some random valid domain entities
 
-  fun aValidAccount(
-    accountTemplate: AccountTemplate,
-    accountId: UUID = UUID.randomUUID(),
-    customerTranche: CustomerTranche? = null,
-    status: AccountStatus = randomEnum(),
-    features: Set<AccountFeature> = emptySet(),
-  ): Account =
-    Account(
-      accountId = accountId,
-      customerId = UUID.randomUUID().toString(),
-      status = status,
-      accountTemplate = accountTemplate,
-      customerTranche = customerTranche,
-      features = features.toMutableSet(),
-    )
-
-  fun validAccountsWithIds(
-    numberOfAccounts: Int,
-    accountTemplate: AccountTemplate,
-    accountId: UUID = UUID.randomUUID(),
-    customerTranche: CustomerTranche? = null,
-    status: AccountStatus = randomEnum(),
-  ): Set<Account> =
-    (1..numberOfAccounts)
-      .map { i ->
-        aValidAccount(
-          accountTemplate = accountTemplate,
-          accountId = accountId,
-          customerTranche = customerTranche,
-          status = status,
-        ).apply { id = i.toLong() }
-      }.toSet()
-
-  fun aValidInternalAccount(role: InternalAccountRole = randomEnum()): Account =
-    aValidAccount(aValidAccountTemplate()).apply {
-      internal = true
-      internalAccountRole = role
-      customerId = AccountConstants.INTERNAL_BANK_CUSTOMER_ID
-    }
-
-  fun aValidCustomerTranche(): CustomerTranche = CustomerTranche(customerTrancheId = UUID.randomUUID(), displayName = randomWords(4))
-
-  fun aValidAccountTemplate(): AccountTemplate =
-    AccountTemplate(
-      accountTemplateId = randomUUID(),
-      displayName = randomWords(3),
-      currentRepresentation = aValidAccountTemplateRepresentation(),
-    )
-
-  fun aValidAccountTemplateRepresentation(): AccountTemplateRepresentation =
-    AccountTemplateRepresentation(
-      accountTemplateId = randomUUID(),
-      displayName = randomWords(3),
-      interestFeatureEnabled = randomBoolean(),
-      interestFeatureParams = randomInterestFeatureParameters(),
-      balanceLimitFeatureEnabled = randomBoolean(),
-      balanceLimitFeatureParams = randomBalanceLimitFeatureParameters(),
-    )
-
-  fun aValidLedgerEntry(account: Account) =
-    LedgerEntry(
-      operationId = UUID.randomUUID(),
-      account = account,
-      phase = randomEnum(),
-      amount = randomBigDecimal(0.01, 999999.99).toSevenDecimalPlaces(),
-      type = randomEnum(),
-      address = randomAlphabetic(16).uppercase(),
-      asset = randomAlphabetic(16).uppercase(),
-      timestamp = randomInstant(),
-    )
-
-  fun aValidAccountFeature(name: String = randomAlphabetic(16).uppercase()): AccountFeature =
-    AccountFeature(
-      name = name,
-      config = """{"${randomWords(1).lowercase()}" : "${randomWords(1).lowercase()}"}""",
-    )
-
-  fun randomInterestFeatureConfigurationProperties(): InterestFeatureConfigurationProperties =
-    InterestFeatureConfigurationProperties(
-      scheduledTask =
-        InterestFeatureScheduledTaskConfigurationProperties(
-          cronExpression =
-            "${randomInt(0, 59)} ${randomInt(0, 59)} ${randomInt(0, 23)} * * ?",
-          effectiveTimestampHour = randomInt(0, 23),
-          effectiveTimestampMinute = randomInt(0, 59),
-          effectiveTimestampSecond = randomInt(0, 59),
-          incrementDuration = Duration.ofDays(randomLong(1, 30)),
-          accrualIncrementDuration = Duration.ofMillis(randomLong(1, 999)),
-          applicationIncrementDuration = Duration.ofSeconds(randomLong(1, 120)),
-        ),
-    )
-
   fun randomKafkaConfigurationProperties(): KafkaConfigurationProperties =
     KafkaConfigurationProperties(
       numberOfPartitions = randomInt(from = 1),
@@ -255,18 +149,4 @@ object TestingFu {
           maxDelay = randomLong(from = 10000, until = 30000),
         ),
     )
-
-  fun randomInterestFeatureParameters(bonusInterestEnabled: Boolean = randomBoolean()): InterestFeatureParameters =
-    InterestFeatureParameters(
-      interestRate = randomBigDecimal(0.0010000, 0.9999999),
-      bonusInterestEnabled = bonusInterestEnabled,
-      bonusInterestRate = randomBigDecimal(0.0010000, 0.9999999),
-      interestAccrualStrategy = randomEnum(),
-      interestApplicationFrequency = randomEnum(),
-      interestApplicationDay = randomInt(1, 31),
-      interestApplicationMonth = randomInt(1, 12),
-    )
-
-  fun randomBalanceLimitFeatureParameters(): BalanceLimitFeatureParameters =
-    BalanceLimitFeatureParameters(balanceLimit = randomBigDecimal(100000.00, 1000000.00))
 }

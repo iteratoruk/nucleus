@@ -48,7 +48,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgres:17.5
+          image: postgres:17.9
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5432
@@ -101,7 +101,7 @@ spec:
     spec:
       containers:
         - name: redis
-          image: redis:8.0
+          image: redis:8.6
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 6379
@@ -141,7 +141,7 @@ spec:
     spec:
       containers:
         - name: zookeeper
-          image: confluentinc/cp-zookeeper:8.10.0
+          image: confluentinc/cp-zookeeper:7.9.6
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 2181
@@ -184,9 +184,10 @@ spec:
       labels:
         app: kafka
     spec:
+      enableServiceLinks: false
       containers:
         - name: kafka
-          image: confluentinc/cp-kafka:8.10.0
+          image: confluentinc/cp-kafka:7.9.6
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9092
@@ -233,8 +234,8 @@ spec:
     spec:
       containers:
         - name: nucleus-service
-          image: iterator/nucleus:latest
-          imagePullPolicy: Never
+          image: iterator/nucleus
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           env:
@@ -260,7 +261,7 @@ spec:
           livenessProbe:
             httpGet:
               port: 8080
-              path: /actuator/health
+              path: /actuator/health/liveness
               httpHeaders:
                 - name: X-Client-ID
                   value: k8s-readiness-probe
@@ -269,7 +270,7 @@ spec:
           readinessProbe:
             httpGet:
               port: 8080
-              path: /actuator/health
+              path: /actuator/health/readiness
               httpHeaders:
                 - name: X-Client-ID
                   value: k8s-readiness-probe

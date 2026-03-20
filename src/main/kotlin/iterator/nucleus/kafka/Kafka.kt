@@ -134,7 +134,7 @@ interface NucleusSerializationBase {
   companion object {
     private val STR_SERIALIZER = StringSerializer()
     private val STR_DESERIALIZER = StringDeserializer()
-    private val CACHE: ConcurrentHashMap<String, Class<*>?> = ConcurrentHashMap()
+    private val CACHE: ConcurrentHashMap<String, Class<*>> = ConcurrentHashMap()
   }
 
   val resolver: TopicTypeResolver

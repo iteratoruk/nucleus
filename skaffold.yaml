@@ -6,6 +6,9 @@ manifests:
   rawYaml:
     - k8s/minikube.yaml
 build:
+  local:
+    push: false
+    useDockerCLI: true
   artifacts:
     - image: iterator/nucleus
       context: .
