@@ -1,0 +1,74 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+```bash
+# Build (also runs tests and produces build/libs/nucleus.jar)
+./gradlew build
+
+# Run tests only
+./gradlew test
+
+# Run a single test class
+./gradlew test --tests "iterator.nucleus.SomeTest"
+
+# Run the application locally (requires services - see below)
+SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
+
+# Static analysis and formatting
+./gradlew detekt
+./gradlew spotlessCheck
+./gradlew spotlessApply   # auto-fix formatting
+```
+
+Before submitting a PR, ensure `./gradlew test`, `./gradlew detekt`, and `./gradlew spotlessCheck` all pass.
+
+## Required Services
+
+Tests use Testcontainers (no manual setup needed). For local development, start PostgreSQL 17.5, Redis 8.0, and Kafka (confluentinc/cp-kafka:8.10.0) — see README.md for the exact Docker commands.
+
+## Architecture
+
+Nucleus is a Kotlin/Spring Boot 3 banking microservice. All source lives under `src/main/kotlin/iterator/nucleus/`.
+
+### Core framework classes
+
+- **`AbstractJpaEntity`** — base for all immutable JPA entities: auto-generated `Long` id, `@Version` for optimistic locking, JPA auditing (`createdBy` from `X-Client-ID` header, `createdDate`). `AbstractMutableJpaEntity` adds `lastModifiedBy`/`lastModifiedDate`.
+- **`AbstractJpaRepository<T>`** — marker interface extending `JpaRepository<T, Long>` used by all repositories.
+- **`ErrorHandler`** — `@ControllerAdvice` returning `NucleusError(code, message)` JSON. Add new `NucleusErrorCode` values and handlers here.
+- **`Extensions.kt`** — `BigDecimal` helpers: `toTwoDecimalPlaces()` and `toSevenDecimalPlaces()` (HALF_EVEN rounding).
+
+### Kafka (`kafka/Kafka.kt`)
+
+Polymorphic serialization based on topic name. To add a new message type:
+1. Implement `TopicMessageTypeMapper` (or subclass `RegexTopicMessageTypeMapper`) and register it as a Spring bean.
+2. Use `@TransactionalRetryingKafkaListener(topics = [...])` on listener methods — this composite annotation bundles `@KafkaListener`, `@Transactional`, and `@RetryableTopic` with backoff from `nucleus.defaults.kafka.retry.*` config.
+3. Use `KafkaConfigurationUtils.toNewTopics(obj, partitions, replicationFactor)` to auto-declare topics from a `const val` holding object.
+
+### Scheduling (`schedule/Schedule.kt`)
+
+Quartz-backed, persisted in PostgreSQL, cluster-safe. To add a scheduled task:
+1. Implement `ScheduledTask<T>` — `run(data: T): ScheduledTaskResult<T>`.
+2. Register a `ScheduledTaskDetails<T>` bean using the `scheduledTask(bean, cronExpression, initialJobData)` helper. The job data (type `T`) is serialized to JSON and persisted in Quartz tables; the result's `data` field becomes the input for the next run.
+3. `QuartzScheduledJob` dispatches execution and emits `ScheduledTaskStartedEvent`/`ScheduledTaskFinishedEvent` audit events automatically.
+
+### Audit (`audit/Audit.kt`)
+
+`AuditService.publishAuditEvent(event)` is `@Async`. `LoggingAuditRepository` writes events as JSON to SLF4J. Extend `AbstractAuditEvent` and add a value to `NucleusAuditEventType` for new event types.
+
+### Testing
+
+All integration tests extend `AbstractApiTest`, which:
+- Starts the full Spring context with the `api-test` profile.
+- Uses `@Testcontainers` (via `TestContainers` interface) for PostgreSQL, Redis, and Kafka.
+- Replaces `AuditService` with `MockAuditService` (synchronous, clearable) and makes async execution synchronous via `SyncTaskExecutor`.
+- Provides `MockMvc mvc` for HTTP assertions.
+
+## Conventions
+
+- Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat:`, `fix:`, `chore:`).
+- REST API paths are prefixed `/api/v1`.
+- The `X-Client-ID` request header is used as the JPA auditor (`createdBy`/`lastModifiedBy`).
+- Scheduled task cron expressions use UTC.
