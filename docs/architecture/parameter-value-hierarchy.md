@@ -58,21 +58,21 @@ maintained by Nucleus and serve as system-wide fallbacks. No external client may
 the global node.
 
 **Parameter value.** A key-value pair attached to a parameter node. Every parameter value
-carries an effective date — the date from which it governs resolution. A parameter value
-is identified by the triple (node, key, effective date).
+carries an effective datetime — the datetime from which it governs resolution. A parameter value
+is identified by the triple (node, key, effective datetime).
 
-**Effective date.** The date from which a parameter value is applicable for resolution
-purposes. Not the date on which the value was written to Nucleus. These two dates are
-distinct and must not be conflated.
+**Effective datetime.** The UTC timestamp (to second precision) from which a parameter
+value is applicable for resolution purposes. Not the datetime on which the value was
+written to Nucleus. These two datetimes are distinct and must not be conflated.
 
-**Resolution date.** The date supplied to the resolution function as the "as at" date.
+**Resolution datetime.** The UTC timestamp supplied to the resolution function as the "as at" point in time.
 In scheduled processing contexts, this is the business date being processed, not the
 wall-clock time at execution. See Resolution Semantics below.
 
 **Applicable value.** The parameter value returned by the resolution function for a given
-(account, key, resolution date) triple. Determined by walking up the node tree from the
+(account, key, resolution datetime) triple. Determined by walking up the node tree from the
 account's own node toward the global node, returning the first value found for the key
-whose effective date is on or before the resolution date.
+whose effective datetime is on or before the resolution datetime.
 
 **Explicit absence.** A deliberately set state at a node indicating that the key has no
 value at this level, and that the resolution walk must terminate here rather than
@@ -85,7 +85,7 @@ parameter values, set at opening time or subsequently, sit at this level and tak
 precedence over all classification-code-level values during resolution.
 
 **Write audit trail.** The record of all values that have ever been submitted for a given
-(node, key, effective date) triple, in submission order. The write audit trail is distinct
+(node, key, effective datetime) triple, in submission order. The write audit trail is distinct
 from the parameter value history: the history is the set of values at different effective
 dates; the audit trail is the record of changes to any given triple over time. The active
 value for a triple is always the most recently submitted value.
@@ -100,7 +100,7 @@ in all scheduled processing contexts.
 
 **Closed period.** A processing period for which Nucleus has completed all scheduled
 processing and whose financial record is considered final. A parameter value whose
-effective date falls within a closed period cannot be set or superseded. A period that has
+effective datetime falls within a closed period cannot be set or superseded. A period that has
 not been closed is an open period, regardless of whether its business date precedes the
 current wall-clock date. The definition of what constitutes period close — and which
 context owns and signals it — is an open governance question; see ADR-002.
@@ -120,8 +120,8 @@ node is created.
 1. The ledger side of a node (the first segment of its classification code) is immutable.
    It may not be changed after the node is created.
 
-2. At most one active parameter value may exist for a given (key, effective date) pair at
-   a node at any point in time. A write for an existing (key, effective date) pair is a
+2. At most one active parameter value may exist for a given (key, effective datetime) pair at
+   a node at any point in time. A write for an existing (key, effective datetime) pair is a
    supersession of the prior value; the prior value is not destroyed but is moved to the
    write audit trail and no longer governs resolution.
 
@@ -131,21 +131,21 @@ node is created.
 4. Only Nucleus may write to the global node. No external client may submit values for the
    global node.
 
-5. A parameter value whose effective date falls within a closed period may not be set or
+5. A parameter value whose effective datetime falls within a closed period may not be set or
    superseded. Nucleus must reject such a submission at write time. A parameter value with
-   an effective date in the past but within an open period is permitted — this is late
+   an effective datetime in the past but within an open period is permitted — this is late
    registration, not backdating, and carries no consistency risk because no financial
    processing for that period has been finalised.
 
 **Entities within this aggregate:**
 
-- **Parameter Value.** Identified by (key, effective date). Carries the value, the
-  effective date, and the write timestamp. Immutable once superseded. The currently active
-  value for a (key, effective date) pair is the most recently submitted value for that
+- **Parameter Value.** Identified by (key, effective datetime). Carries the value, the
+  effective datetime, and the write timestamp. Immutable once superseded. The currently active
+  value for a (key, effective datetime) pair is the most recently submitted value for that
   pair; superseded values are retained in the write audit trail.
 
 - **Parameter Value History.** The ordered collection of all parameter values for a given
-  key at this node, across all effective dates and across all writes. Provides the temporal
+  key at this node, across all effective datetimes and across all writes. Provides the temporal
   view of how configuration for a given key has evolved. Not a separate entity — the
   history is the full collection of Parameter Values for a key.
 
@@ -159,12 +159,12 @@ node is created.
   version. Opaque to this context — the meaning of a key is defined by the Account
   Servicing context that uses it.
 
-- **Parameter Value Entry.** The tuple (value, effective date, write timestamp, author).
+- **Parameter Value Entry.** The tuple (value, effective datetime, write timestamp, author).
   The value itself is typed to the parameter key's declared type; that type constraint is
   enforced at the feature catalogue boundary, not within this aggregate.
 
 - **Explicit Absence Marker.** A sentinelled value that signals deliberate absence for a
-  given (key, effective date) pair. Terminates the resolution walk at this node for this
+  given (key, effective datetime) pair. Terminates the resolution walk at this node for this
   key. Structurally a Parameter Value whose value is the absence marker; semantically
   distinct from any data value.
 
@@ -173,10 +173,10 @@ node is created.
 - `NodeCreated` — a new parameter node has been created (including implicitly created
   intermediate nodes). Carries: classification code, ledger side, creation timestamp.
 - `ParameterValueSet` — a parameter value has been set or superseded at a node. Carries:
-  classification code, key, effective date, new value (or explicit absence marker), write
+  classification code, key, effective datetime, new value (or explicit absence marker), write
   timestamp, prior value (if supersession), author.
 - `ParameterValueSuperseded` — raised alongside `ParameterValueSet` when the write is a
-  supersession rather than a new value. Carries: classification code, key, effective date,
+  supersession rather than a new value. Carries: classification code, key, effective datetime,
   superseded value, supersession timestamp.
 
 **Domain events consumed:** None. The Parameter Node aggregate is written to exclusively
@@ -234,15 +234,15 @@ and the history of that relationship. It is distinct from the account aggregate 
 
 ## Resolution Semantics
 
-Resolution is a pure function. Given (account, key, resolution date), it returns the
+Resolution is a pure function. Given (account, key, resolution datetime), it returns the
 applicable parameter value or explicit absence, with no side effects.
 
 The resolution walk proceeds as follows:
 
 1. Begin at the account node (account-level parameter values, if any).
-2. If a value or explicit absence exists for the key whose effective date is on or before
-   the resolution date, return it. If multiple effective dates qualify, the latest
-   qualifying effective date governs.
+2. If a value or explicit absence exists for the key whose effective datetime is on or before
+   the resolution datetime, return it. If multiple effective datetimes qualify, the latest
+   qualifying effective datetime governs.
 3. Otherwise, move to the account's current parameter node (the leaf classification node).
 4. Apply the same lookup. Return if found.
 5. Walk up the tree, repeating the lookup at each ancestor node, until the global node is
@@ -252,19 +252,19 @@ The resolution walk proceeds as follows:
    context, not of Parameter Configuration.
 
 **Explicit absence terminates the walk.** If an explicit absence marker is found at any
-level for the qualifying effective date, the walk terminates and "no value" is returned,
+level for the qualifying effective datetime, the walk terminates and "no value" is returned,
 regardless of what ancestor nodes may hold.
 
-**The resolution date is always explicit.** It is never implicitly the current wall-clock
-time. In an API request context, when no resolution date is supplied by the caller, the
-current date is used as the default — but this default is an explicit input substitution,
+**The resolution datetime is always explicit.** It is never implicitly the current wall-clock
+time. In an API request context, when no resolution datetime is supplied by the caller, the
+current datetime is used as the default — but this default is an explicit input substitution,
 not an implicit dependency on system time. In a scheduled processing context, the
-resolution date is always the business date being processed.
+resolution datetime is always the business date being processed.
 
 **The distinction between business date and wall-clock time in scheduled processing is a
 domain invariant, not an implementation preference.** If end-of-day processing for
 business date 2026-04-01 runs at 02:00 on 2026-04-02 (following a delay or retry), all
-parameter value resolutions within that job must use 2026-04-01 as the resolution date.
+parameter value resolutions within that job must use 2026-04-01 as the resolution datetime.
 A rate that became effective on 2026-04-01 must be applied to 2026-04-01 processing
 regardless of when the job runs. A rate that becomes effective on 2026-04-02 must not be
 applied to 2026-04-01 processing even if the job runs after 2026-04-02 begins.
@@ -275,7 +275,7 @@ applied to 2026-04-01 processing even if the job runs after 2026-04-02 begins.
 
 **Account context (downstream from Parameter Configuration):**
 Parameter Configuration supplies resolved configuration to the Account Servicing context
-on demand. The Account Servicing context provides the resolution date and the account
+on demand. The Account Servicing context provides the resolution datetime and the account
 identity; Parameter Configuration performs the resolution and returns the applicable
 values. The Account Servicing context does not hold a copy of configuration — it queries
 Parameter Configuration at resolution time. The integration pattern is
@@ -305,11 +305,11 @@ mechanism; the Account Servicing context's response to it is outside this model.
 ## Open Questions
 
 **OQ-1: Backdating controls. RESOLVED.**
-Parameter values with effective dates in closed periods are not permitted. Nucleus rejects
-any submission whose effective date falls within a period that has been closed — this is
+Parameter values with effective datetimes in closed periods are not permitted. Nucleus rejects
+any submission whose effective datetime falls within a period that has been closed — this is
 the point at which the financial record is final and the consistency risk of a
 configuration change is irreconcilable without mandatory reprocessing of immutable ledger
-entries. A submission with an effective date in the past but within an open period is
+entries. A submission with an effective datetime in the past but within an open period is
 permitted: this is late registration, carries no consistency risk, and must not be
 conflated with backdating.
 
@@ -349,7 +349,7 @@ the catalogue, and enforced through the ledger-side prefix at submission time.
 **OQ-4: Hypothetical configuration query endpoint. RESOLVED.**
 Nucleus exposes `GET /account-features/{classificationCode}?asAt={date}`, returning the
 resolved account features for a hypothetical account at the given classification code and
-effective date. The `asAt` parameter defaults to the current date if not supplied. The
+effective datetime. The `asAt` parameter defaults to the current date if not supplied. The
 traversal begins at the classification node; account-level values are not included. The
 response is in the same strongly-typed account features representation used by all other
 account-features endpoints. See ADR-007.
@@ -360,8 +360,8 @@ account-features endpoints. See ADR-007.
 
 | Candidate | Decision to be recorded |
 |---|---|
-| ADR-001: Full parameter value history | A node holds a full temporal history of values per key — multiple values at different effective dates. A single overwritten current value is not sufficient. |
-| ADR-002: Closed period governance | The definition of what constitutes period close, which context owns and signals it, and how Parameter Configuration enforces the boundary against submissions with effective dates in closed periods. |
+| ADR-001: Full parameter value history | A node holds a full temporal history of values per key — multiple values at different effective datetimes. A single overwritten current value is not sufficient. |
+| ADR-002: Closed period governance | The definition of what constitutes period close, which context owns and signals it, and how Parameter Configuration enforces the boundary against submissions with effective datetimes in closed periods. |
 | ~~ADR-003: Account-level parameter values on node transfer~~ | ~~Resolved: preserved unchanged. See OQ-2.~~ |
 | ADR-004: Business date as resolution reference in scheduled processing | Scheduled processing must parameterise parameter resolution by the business date being processed, not by the wall-clock time at execution. |
 | ~~ADR-005: Feature catalogue structure~~ | ~~Resolved: unified catalogue, with side-specific features named distinctly and validity enforced by the ledger-side prefix at submission time. See OQ-3.~~ |

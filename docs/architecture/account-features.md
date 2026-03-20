@@ -210,7 +210,7 @@ the primary write operation used by all configurer personas.
 
 ```json
 {
-  "effectiveDate": "2026-04-01",
+  "effectiveDatetime": "2026-04-01T00:00:00Z",
   "features": {
     "liabilityInterest": {
       "enabled": true,
@@ -220,13 +220,14 @@ the primary write operation used by all configurer personas.
 }
 ```
 
-The `effectiveDate` field specifies the date from which all property values in this
-submission become effective for resolution purposes. It is not the date on which the
-submission is made. If omitted, the current date is used as the default — this is an
-explicit input substitution, not an implicit dependency on system time, and follows the
-same convention as the resolution date default in the parameter value hierarchy. The
-effective date applies uniformly to all properties in the submission. Properties that
-require different effective dates must be submitted separately. See ADR-009.
+The `effectiveDatetime` field specifies the UTC timestamp (to second precision) from
+which all property values in this submission become effective for resolution purposes.
+It is not the datetime on which the submission is made. If omitted, the current datetime
+is used as the default — this is an explicit input substitution, not an implicit
+dependency on system time, and follows the same convention as the resolution datetime
+default in the parameter value hierarchy. The effective datetime applies uniformly to
+all properties in the submission. Properties that require different effective datetimes
+must be submitted separately. See ADR-009.
 
 The `features` object contains the feature configuration. Only the features and
 properties included in `features` are written. A feature omitted from `features` is not
@@ -254,20 +255,20 @@ must not be required to do so.
    personas that invalid configuration must be rejected with structured, actionable
    errors.
 7. If validation passes, all property values are written as parameter values at the
-   classification node with the supplied effective date. Each property is written
+   classification node with the supplied effective datetime. Each property is written
    independently as a separate parameter value keyed under its derived parameter key.
    All writes are subject to the closed period constraint established in the parameter
    value hierarchy model.
 
 **Idempotency.** Submitting identical feature configuration for the same classification
-code and effective date is safe. A repeated submission for an existing (classification
-code, parameter key, effective date) triple is a supersession write — the prior value is
+code and effective datetime is safe. A repeated submission for an existing (classification
+code, parameter key, effective datetime) triple is a supersession write — the prior value is
 retained in the write audit trail and the new value becomes active. If the value is
 unchanged from the prior write, the result is the same active value; a supersession write
 is still made and recorded.
 
 **Response.** The resolved feature configuration for the classification code as of the
-submitted effective date, in the same strongly-typed feature representation used by the
+submitted effective datetime, in the same strongly-typed feature representation used by the
 `GET` endpoint. The resolution traversal begins at the submitted classification node and
 walks up to the global node; account-level values are not included. This allows the
 caller to confirm the effective state of the node after writing, including values
@@ -290,7 +291,7 @@ behave identically.
 ### `GET /account-features/{classificationCode}?asAt={date}`
 
 Returns the resolved account feature configuration for a hypothetical account at the
-given classification code and effective date. Behaviour, semantics, and risk profile are
+given classification code and effective datetime. Behaviour, semantics, and risk profile are
 defined in ADR-007. The response format is the same as the PUT response: a strongly-typed
 feature representation with resolved values for all configured features and properties,
 with internal parameter keys translated back to feature and property names.
@@ -388,6 +389,6 @@ standalone concern.
 | Candidate | Decision to be recorded |
 |---|---|
 | ADR-008 | Feature-namespaced parameter key convention: `{featureName}.{propertyName}` as the internal key structure, and the two-constraint safety model (ledger-side enforcement at submission plus key-level namespace segregation) that makes cross-feature mis-resolution structurally impossible. |
-| ADR-009 | Effective date granularity in the account-features API: a single effective date per submission applies to all properties in the request, and its resolution to the current date when absent is an explicit substitution, not an implicit system clock dependency. |
+| ADR-009 | Effective datetime granularity in the account-features API: a single effective datetime per submission applies to all properties in the request, and its resolution to the current datetime when absent is an explicit substitution, not an implicit system clock dependency. |
 | ADR-010 | Explicit absence in the account-features API representation: how deliberate absence (an explicit absence marker in the parameter hierarchy) is distinguished from non-configuration in both the read and write paths, and what mechanism clients use to set explicit absence. |
 | ADR-011 | Ledger side classification governance: how the system knows which first classification code segments designate asset sides and which designate liability sides, whether this is extensible without a Nucleus deployment, and whether the classification code structure is the right long-term mechanism for encoding ledger side. |
