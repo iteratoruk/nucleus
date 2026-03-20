@@ -34,11 +34,15 @@ downstream processing triggered by a parameter value becoming effective.
 alphanumeric segments. Each segment corresponds to a level in the parameter node tree.
 The classification code is the primary key of a parameter node and the link between an
 account and its configuration. It is a key, not a domain object: Nucleus does not infer
-meaning from the individual segments.
+meaning from the individual segments, with one deliberate exception — the ledger side.
 
-**Ledger side.** The first segment of a classification code. Identifies whether the
-configuration pertains to the asset or liability side of the ledger. This is an intrinsic
-property of a node and, by extension, of any account attached to it.
+**Ledger side.** The first segment of a classification code. The ledger side is the one
+element of a classification code from which Nucleus explicitly infers semantics: it
+identifies whether the configuration pertains to the asset or liability side of the
+ledger, and the account-features API uses it to determine which catalogue features are
+valid for a given submission. This is an intrinsic property of a node and, by extension,
+of any account attached to it. No other element of the classification code is interpreted
+by Nucleus.
 
 **Parameter node.** A node in the classification code tree. Has an identity (its
 classification code), a parent (implicit from the code structure), and zero or more
@@ -94,6 +98,13 @@ is recorded in the node transfer history.
 from the wall-clock time at execution. The business date governs parameter value resolution
 in all scheduled processing contexts.
 
+**Closed period.** A processing period for which Nucleus has completed all scheduled
+processing and whose financial record is considered final. A parameter value whose
+effective date falls within a closed period cannot be set or superseded. A period that has
+not been closed is an open period, regardless of whether its business date precedes the
+current wall-clock date. The definition of what constitutes period close — and which
+context owns and signals it — is an open governance question; see ADR-002.
+
 ---
 
 ## Aggregates
@@ -119,6 +130,12 @@ node is created.
 
 4. Only Nucleus may write to the global node. No external client may submit values for the
    global node.
+
+5. A parameter value whose effective date falls within a closed period may not be set or
+   superseded. Nucleus must reject such a submission at write time. A parameter value with
+   an effective date in the past but within an open period is permitted — this is late
+   registration, not backdating, and carries no consistency risk because no financial
+   processing for that period has been finalised.
 
 **Entities within this aggregate:**
 
@@ -287,54 +304,55 @@ mechanism; the Account Servicing context's response to it is outside this model.
 
 ## Open Questions
 
-**OQ-1: Backdating controls.**
-Domain reasoning establishes that backdating a parameter value (effective date in the
-past) changes the historical record of what configuration governed past processing.
-Ledger entries produced under the prior configuration are immutable facts; the
-configuration that produced them would appear, retrospectively, to say something
-different. Domain reasoning cannot determine: who may authorise a backdated update; what
-controls must surround it; whether affected accounts must be identified; whether
-reprocessing of affected accounts is mandatory, advisory, or not required; and how the
-discrepancy between immutable ledger entries and the revised configuration record is
-surfaced to Alex from Accounting. This must be resolved in an ADR before any story
-involving parameter value correction or adjustment is implemented.
-**→ ADR candidate: Backdating of parameter values.**
+**OQ-1: Backdating controls. RESOLVED.**
+Parameter values with effective dates in closed periods are not permitted. Nucleus rejects
+any submission whose effective date falls within a period that has been closed — this is
+the point at which the financial record is final and the consistency risk of a
+configuration change is irreconcilable without mandatory reprocessing of immutable ledger
+entries. A submission with an effective date in the past but within an open period is
+permitted: this is late registration, carries no consistency risk, and must not be
+conflated with backdating.
 
-**OQ-2: Account-level parameter values on node transfer.**
-When an account is transferred from one parameter node to another, its account-level
-parameter values (set at opening or subsequently) remain at the account node level. Three
-positions are coherent: (a) preserve all account-level values unchanged — they remain the
-most specific override; (b) clear all account-level values — the account inherits cleanly
-from the new node; (c) revalidate account-level values against the new node's feature
-configuration, preserving applicable ones and clearing those no longer valid in the new
-context. Each position has legitimate uses and each forecloses scenarios the others
-support. This must be resolved in an ADR; the choice has direct implications for how node
-transfer is used in practice by all three configurer personas.
-**→ ADR candidate: Account-level parameter values on node transfer.**
+The domain question of *whether* to permit backdating is therefore resolved: it is not
+permitted. What remains as a policy question — and the subject of ADR-002 — is the
+definition and governance of "closed period": what event or condition closes a period,
+which context owns and signals that close, and whether Parameter Configuration enforces
+this boundary autonomously or in response to an explicit signal from the processing
+context.
 
-**OQ-3: Feature catalogue structure — unified vs. per-ledger-side.**
-The set of valid features in a `PUT /account-features` request may be defined as a single
-unified catalogue (where each feature declares which ledger sides it applies to) or as
-two per-ledger-side catalogues (one for assets, one for liabilities). A unified catalogue
-with per-feature applicability rules accommodates cross-side features (restriction types,
-general behavioural parameters) more cleanly; per-side catalogues make the valid feature
-set for any given node immediately apparent without per-feature metadata. This decision
-affects catalogue maintenance, versioning, and the validation error messages configurers
-receive when they submit inapplicable features. It cannot be resolved by domain reasoning
-alone.
-**→ ADR candidate: Feature catalogue structure.**
+**OQ-2: Account-level parameter values on node transfer. RESOLVED.**
+Account-level parameter values are preserved unchanged on node transfer. They remain at
+the account node level and continue to take precedence over all classification-code-level
+values during resolution, exactly as before the transfer. The account node is the most
+specific level of the hierarchy; its contents are a property of the account, not of the
+node the account is attached to, and a transfer does not alter the account's own state.
 
-**OQ-4: Hypothetical configuration query endpoint.**
-Whether Nucleus should expose `GET /account-features/{classificationCode}?asAt={date}` —
-allowing a configurer to verify the resolved configuration that would apply to a
-hypothetical account at a given classification code and date, without opening an account —
-has not been decided. The use case is legitimate: Sasha, Liam, and Maya all have reason
-to verify configuration before opening accounts, particularly after setting future-dated
-parameter values. The cost is a read path that performs the full hierarchy traversal
-without an account context. This is a capability and prioritisation decision, not a domain
-question. It should be resolved before stories about configuration verification are
-written, as the absence of this endpoint affects how configurers must validate their
-submissions.
+A configurer that wishes to clear or change account-level values following a transfer may
+do so explicitly via the account features API after the transfer is complete.
+
+**OQ-3: Feature catalogue structure — unified vs. per-ledger-side. RESOLVED.**
+The feature catalogue is unified. Features whose domain meaning genuinely differs between
+asset and liability accounts are expressed as distinct catalogue entries named to reflect
+that distinction (e.g. an asset interest feature for lending accounts, a liability interest
+feature for savings and current accounts). Features whose domain meaning is uniform across
+ledger sides appear as single catalogue entries.
+
+The account-features API enforces feature validity before writing. Because configuration
+is always submitted against a classification code, the ledger-side element of that code
+is available at submission time. The ledger side is the one element of the classification
+code from which Nucleus infers semantics; the API uses it to determine which catalogue
+features are valid for the submission and rejects any feature not applicable to that
+ledger side with a structured, actionable error. No explicit per-feature applicability
+metadata is required — the feature's scope is expressed through its name and position in
+the catalogue, and enforced through the ledger-side prefix at submission time.
+
+**OQ-4: Hypothetical configuration query endpoint. RESOLVED.**
+Nucleus exposes `GET /account-features/{classificationCode}?asAt={date}`, returning the
+resolved account features for a hypothetical account at the given classification code and
+effective date. The `asAt` parameter defaults to the current date if not supplied. The
+traversal begins at the classification node; account-level values are not included. The
+response is in the same strongly-typed account features representation used by all other
+account-features endpoints. See ADR-007.
 
 ---
 
@@ -343,8 +361,9 @@ submissions.
 | Candidate | Decision to be recorded |
 |---|---|
 | ADR-001: Full parameter value history | A node holds a full temporal history of values per key — multiple values at different effective dates. A single overwritten current value is not sufficient. |
-| ADR-002: Backdating of parameter values | The controls, authorisation model, and reprocessing obligations that apply when a parameter value is set with an effective date in the past. |
-| ADR-003: Account-level parameter values on node transfer | Whether account-level overrides are preserved, cleared, or revalidated when an account is transferred to a new parameter node. |
+| ADR-002: Closed period governance | The definition of what constitutes period close, which context owns and signals it, and how Parameter Configuration enforces the boundary against submissions with effective dates in closed periods. |
+| ~~ADR-003: Account-level parameter values on node transfer~~ | ~~Resolved: preserved unchanged. See OQ-2.~~ |
 | ADR-004: Business date as resolution reference in scheduled processing | Scheduled processing must parameterise parameter resolution by the business date being processed, not by the wall-clock time at execution. |
-| ADR-005: Feature catalogue structure | Whether the set of valid features per `PUT /account-features` request is defined as a unified catalogue with per-feature applicability rules or as per-ledger-side catalogues. |
+| ~~ADR-005: Feature catalogue structure~~ | ~~Resolved: unified catalogue, with side-specific features named distinctly and validity enforced by the ledger-side prefix at submission time. See OQ-3.~~ |
 | ADR-006: Explicit absence mechanism | The mechanism by which a child node may suppress inheritance of a parameter value from a parent node — signalling deliberate absence rather than non-configuration. |
+| ADR-007: Hypothetical configuration query endpoint | Nucleus exposes `GET /account-features/{classificationCode}?asAt={date}` to allow configurers to verify resolved configuration without opening an account. |

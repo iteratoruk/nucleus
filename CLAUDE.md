@@ -66,6 +66,32 @@ All integration tests extend `AbstractApiTest`, which:
 - Replaces `AuditService` with `MockAuditService` (synchronous, clearable) and makes async execution synchronous via `SyncTaskExecutor`.
 - Provides `MockMvc mvc` for HTTP assertions.
 
+## Domain Architecture
+
+Design decisions and domain models are recorded in `docs/architecture/`. Read these
+before implementing features in the areas they cover — they record decisions that are not
+derivable from the code alone and explain why alternatives were rejected.
+
+- `docs/architecture/parameter-value-hierarchy.md` — domain model for the parameter
+  configuration bounded context: classification code tree, parameter node aggregates,
+  resolution semantics, and account node attachment. The foundational document for
+  account opening, account servicing, and the account-features API.
+
+The `docs/architecture/adrs/` directory contains Architecture Decision Records:
+
+| ADR | Decision |
+|---|---|
+| ADR-001 | Parameter nodes hold a full temporal history of values per key across effective dates. |
+| ADR-002 | Closed period governance: a period is closed by a `PeriodClosed` event from the Account Servicing context; parameter values with effective dates in closed periods are rejected at write time. |
+| ADR-003 | Account-level parameter values are preserved unchanged on node transfer. |
+| ADR-004 | Scheduled processing resolves parameter values against the business date being processed, never the wall-clock time at execution. |
+| ADR-005 | The feature catalogue is unified; features differing by ledger side are distinct named entries; the ledger-side prefix of the classification code enforces applicability at submission time. |
+| ADR-006 | Explicit absence is represented as a sentinel parameter value that terminates the resolution walk, distinguishing deliberate inheritance suppression from non-configuration. |
+| ADR-007 | `GET /account-features/{classificationCode}?asAt={date}` returns resolved classification-node configuration for a hypothetical account without requiring an account to exist. |
+
+Persona and role documents in `docs/personas/` and `docs/roles/` define the actors in
+the system and the modes in which Claude Code operates in this repository.
+
 ## Conventions
 
 - Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat:`, `fix:`, `chore:`).
