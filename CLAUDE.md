@@ -76,6 +76,11 @@ derivable from the code alone and explain why alternatives were rejected.
   configuration bounded context: classification code tree, parameter node aggregates,
   resolution semantics, and account node attachment. The foundational document for
   account opening, account servicing, and the account-features API.
+- `docs/architecture/account-features.md` — domain model for the account feature
+  catalogue bounded context: the strongly-typed external representation of configurable
+  account behaviour, feature definitions (asset interest, liability interest), the
+  parameter key mapping convention, the account-features API contract, and resolution
+  safety guarantees.
 
 The `docs/architecture/adrs/` directory contains Architecture Decision Records:
 
@@ -88,6 +93,8 @@ The `docs/architecture/adrs/` directory contains Architecture Decision Records:
 | ADR-005 | The feature catalogue is unified; features differing by ledger side are distinct named entries; the ledger-side prefix of the classification code enforces applicability at submission time. |
 | ADR-006 | Explicit absence is represented as a sentinel parameter value that terminates the resolution walk, distinguishing deliberate inheritance suppression from non-configuration. |
 | ADR-007 | `GET /account-features/{classificationCode}?asAt={date}` returns resolved classification-node configuration for a hypothetical account without requiring an account to exist. |
+| ADR-008 | Parameter keys follow `{featureName}.{propertyName}` — the feature name is the namespace, making cross-feature mis-resolution structurally impossible independent of API-layer validation. |
+| ADR-009 | The account-features API uses a single submission-level effective date applying to all properties; per-property effective dates are not supported in the initial implementation. |
 
 Persona and role documents in `docs/personas/` and `docs/roles/` define the actors in
 the system and the modes in which Claude Code operates in this repository.
