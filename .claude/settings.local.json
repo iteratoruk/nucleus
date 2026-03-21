@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew spotlessApply)",
+      "Bash(./gradlew detekt:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.confluent.io)",
+      "WebFetch(domain:developer.confluent.io)"
+    ]
+  }
+}
