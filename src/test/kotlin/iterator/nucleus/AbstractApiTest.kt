@@ -18,6 +18,7 @@ import org.springframework.core.task.SyncTaskExecutor
 import org.springframework.scheduling.annotation.AsyncConfigurer
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.jdbc.Sql
 import org.springframework.test.web.servlet.MockMvc
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.util.concurrent.Executor
@@ -26,6 +27,7 @@ import java.util.concurrent.Executor
 @Testcontainers
 @AutoConfigureMockMvc
 @ActiveProfiles(ApiTestConstants.PROFILE_NAME)
+@Sql("/clean.sql")
 abstract class AbstractApiTest(
   val ctx: GenericApplicationContext,
   val mvc: MockMvc,

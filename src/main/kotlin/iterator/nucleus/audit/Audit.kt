@@ -64,6 +64,8 @@ data class ScheduledTaskFinishedEvent(
   )
 
 enum class NucleusAuditEventType {
+  NODE_CREATED,
+  PARAMETER_VALUE_SET,
   SCHEDULED_TASK_STARTED,
   SCHEDULED_TASK_FINISHED,
 }

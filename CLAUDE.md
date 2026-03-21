@@ -105,3 +105,24 @@ the system and the modes in which Claude Code operates in this repository.
 - REST API paths are prefixed `/api/v1`.
 - The `X-Client-ID` request header is used as the JPA auditor (`createdBy`/`lastModifiedBy`).
 - Scheduled task cron expressions use UTC.
+
+### SQL and JPA mapping
+
+**Flyway migrations** use lowercase keywords and quoted identifiers throughout (e.g.
+`create table "parameter_node"`, not `CREATE TABLE parameter_node`). This is consistent with
+`globally_quoted_identifiers: true` in `application.yml`, which causes Hibernate to quote all
+identifiers in generated SQL.
+
+**JPA entity annotations** — `@Table`, `@Column`, and `@JoinColumn` are unnecessary in the
+normal case and should be omitted. Hibernate derives physical names from the
+`CamelCaseToUnderscoresNamingStrategy` physical naming strategy and the
+`ImplicitNamingStrategyComponentPathImpl` implicit naming strategy configured in
+`application.yml`. Kotlin nullability (`val` vs `val?`) conveys nullability at the code level;
+`NOT NULL` constraints are enforced at the schema level in Flyway migrations.
+
+The naming derivations to rely on:
+- Entity class `FooBar` → table `foo_bar`
+- Property `someField` → column `some_field`
+- `@ManyToOne val relatedEntity: RelatedEntity` → FK column `related_entity_id` (field name
+  snake-cased, suffixed with `_id`). Name the field after the related entity type (e.g.
+  `parameterNode`, not `node`) so the derived FK column name is unambiguous and descriptive.
