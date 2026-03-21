@@ -1,5 +1,7 @@
 # Nucleus
 
+[![Build Status](https://app.travis-ci.com/iteratoruk/nucleus.svg?token=Cm8mrHFVrpV3PidDsXeL&branch=main)](https://app.travis-ci.com/iteratoruk/nucleus)
+
 A banking application.
 Nucleus provides account management, customer onboarding, parameter-driven configuration and ledger functionality. Built with Kotlin and Spring Boot, it integrates Postgres, Redis and Kafka to support event-driven workflows and scheduled operations.
 
