@@ -2,6 +2,7 @@ package iterator.nucleus.accountfeatures
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import java.math.BigDecimal
 
 class FeatureCatalogueConverterTest {
   private val converter = FeatureCatalogueConverter()
@@ -11,7 +12,7 @@ class FeatureCatalogueConverterTest {
     val features =
       FeatureConfiguration(
         liabilityInterest =
-          LiabilityInterestFeature(enabled = true, interestRate = "0.0350000"),
+          LiabilityInterestFeature(enabled = true, interestRate = BigDecimal("0.0350000")),
       )
 
     assertThat(converter.toParameterValues(features))
@@ -44,7 +45,7 @@ class FeatureCatalogueConverterTest {
     val features =
       FeatureConfiguration(
         liabilityInterest = LiabilityInterestFeature(enabled = true),
-        assetInterest = AssetInterestFeature(interestRate = "0.0750000"),
+        assetInterest = AssetInterestFeature(interestRate = BigDecimal("0.0750000")),
       )
 
     assertThat(converter.toParameterValues(features))

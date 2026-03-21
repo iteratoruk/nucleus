@@ -58,3 +58,13 @@ And the rejection states the reason for each individual violation
 
 **Open Questions:**
 None.
+
+---
+
+## Technical Notes
+
+**`NucleusViolation.subject` — not `feature`.** The violation type in the structured error response uses `subject` rather than `feature` as the field name. Scenario 3 (malformed classification code) produces a violation whose subject is the classification code itself, not a feature name. Using `feature` would conflate two distinct kinds of violation subject. `subject` is general enough to hold a feature name (Scenarios 1, 2, 4) or a classification code identifier (Scenario 3) without overloading the semantics of the field.
+
+**Exception ownership and error handler centralisation — ADR-013.** The initial implementation placed `FeatureConfigurationException` and its `@ControllerAdvice` handler in the `accountfeatures` package to avoid a circular import with the root `ErrorHandler`. During the NUC-003 refactoring pass, this was resolved by defining `NucleusValidationException` in the root package and consolidating all exception-to-HTTP translation into the single root `ErrorHandler`. The principle: exception types used to produce HTTP responses are root-owned infrastructure; sub-packages are conformist and throw root-defined types. See ADR-013.
+
+**TDD ordering slip — Scenario 4.** Scenario 4 passed immediately on its first test run without requiring new production code. The exhaustive violation collection structure — combining `ledgerSideApplicabilityViolations` and `propertyConstraintViolations` before throwing — was introduced while implementing Scenario 2, not driven by Scenario 4's failing test. This is a YAGNI violation: the combination anticipated Scenario 4 rather than being forced by it. The correct ordering would have been to implement Scenario 2 with only a single violation type, then introduce the combination when Scenario 4's test demanded it. Noted as a discipline failure, not a correctness failure — the implementation is right, the sequence was not.

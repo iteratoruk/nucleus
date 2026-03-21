@@ -6,6 +6,9 @@ import iterator.nucleus.audit.NucleusAuditEventType
 import iterator.nucleus.parameters.NodeCreatedEvent
 import iterator.nucleus.parameters.ParameterValueSetEvent
 import org.assertj.core.api.Assertions.assertThat
+import org.hamcrest.Matchers.containsInAnyOrder
+import org.hamcrest.Matchers.containsString
+import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.support.GenericApplicationContext
@@ -125,6 +128,118 @@ class AccountFeaturesApiTest
         assertThat(event.value).isEqualTo("0.0350000")
         assertThat(event.effectiveDatetime).isEqualTo(Instant.parse("2026-04-01T00:00:00Z"))
       }
+    }
+
+    @Test
+    fun `a submission containing a feature not valid for the ledger side is rejected`() {
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS") {
+          header(NucleusHeaders.CLIENT_ID, "cameron")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "assetInterest": {
+                  "enabled": true,
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isBadRequest() }
+          jsonPath("$.code") { value("INVALID_FEATURE_CONFIGURATION") }
+          jsonPath("$.violations") { value(hasSize<Any>(1)) }
+          jsonPath("$.violations[0].subject") { value("assetInterest") }
+          jsonPath("$.violations[0].message") { value(containsString("LIAB")) }
+        }
+
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.NODE_CREATED)).isEmpty()
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
+    }
+
+    @Test
+    fun `a submission targeting a malformed classification code is rejected`() {
+      mvc
+        .put("/api/v1/account-features/LIAB-INAS") {
+          header(NucleusHeaders.CLIENT_ID, "cameron")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": { "enabled": true }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isBadRequest() }
+          jsonPath("$.code") { value("INVALID_FEATURE_CONFIGURATION") }
+          jsonPath("$.violations") { value(hasSize<Any>(1)) }
+          jsonPath("$.violations[0].subject") { value(containsString("LIAB-INAS")) }
+          jsonPath("$.violations[0].message") { value(containsString("classification code")) }
+        }
+    }
+
+    @Test
+    fun `a submission containing an interest rate with more than 7 decimal places is rejected`() {
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS") {
+          header(NucleusHeaders.CLIENT_ID, "cameron")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "interestRate": "0.05000004"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isBadRequest() }
+          jsonPath("$.code") { value("INVALID_FEATURE_CONFIGURATION") }
+          jsonPath("$.violations") { value(hasSize<Any>(1)) }
+          jsonPath("$.violations[0].subject") { value("liabilityInterest") }
+          jsonPath("$.violations[0].message") { value(containsString("interestRate")) }
+        }
+
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.NODE_CREATED)).isEmpty()
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
+    }
+
+    @Test
+    fun `a submission with multiple invalid features reports all violations`() {
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS") {
+          header(NucleusHeaders.CLIENT_ID, "cameron")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "assetInterest": { "enabled": true },
+                "liabilityInterest": { "interestRate": "0.05000004" }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isBadRequest() }
+          jsonPath("$.code") { value("INVALID_FEATURE_CONFIGURATION") }
+          jsonPath("$.violations") { value(hasSize<Any>(2)) }
+          jsonPath("$.violations[*].subject") {
+            value(containsInAnyOrder("assetInterest", "liabilityInterest"))
+          }
+        }
+
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.NODE_CREATED)).isEmpty()
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
     }
 
     private fun givenNodeExists(classificationCode: String) {

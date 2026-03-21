@@ -1,9 +1,16 @@
 package iterator.nucleus
 
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.core.JsonGenerator
+import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.databind.SerializerProvider
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer
+import com.fasterxml.jackson.databind.module.SimpleModule
+import com.fasterxml.jackson.databind.ser.std.StdSerializer
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
@@ -12,6 +19,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing
 import org.springframework.retry.annotation.EnableRetry
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.scheduling.annotation.EnableScheduling
+import java.math.BigDecimal
 
 @EnableAsync
 @EnableRetry
@@ -31,6 +39,32 @@ class App {
   @Bean fun objectMapper(): ObjectMapper = Serialization.mapper
 }
 
+class BigDecimalFromStringDeserializer : StdDeserializer<BigDecimal>(BigDecimal::class.java) {
+  override fun deserialize(
+    p: JsonParser,
+    ctxt: DeserializationContext,
+  ): BigDecimal =
+    try {
+      BigDecimal(p.text)
+    } catch (e: NumberFormatException) {
+      throw ctxt.weirdStringException(
+        p.text,
+        BigDecimal::class.java,
+        e.message ?: "not a valid decimal number",
+      )
+    }
+}
+
+class BigDecimalToStringSerializer : StdSerializer<BigDecimal>(BigDecimal::class.java) {
+  override fun serialize(
+    value: BigDecimal,
+    gen: JsonGenerator,
+    provider: SerializerProvider,
+  ) {
+    gen.writeString(value.toString())
+  }
+}
+
 object NucleusHeaders {
   const val CLIENT_ID = "X-Client-ID"
 }
@@ -43,6 +77,11 @@ object Serialization {
       .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
       .configure(SerializationFeature.WRITE_DATES_WITH_ZONE_ID, true)
       .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+      .registerModule(
+        SimpleModule()
+          .addDeserializer(BigDecimal::class.java, BigDecimalFromStringDeserializer())
+          .addSerializer(BigDecimal::class.java, BigDecimalToStringSerializer()),
+      )
 }
 
 object Uris {

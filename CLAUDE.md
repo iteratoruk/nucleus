@@ -97,6 +97,7 @@ The `docs/architecture/adrs/` directory contains Architecture Decision Records:
 | ADR-009 | The account-features API uses a single submission-level effective date applying to all properties; per-property effective dates are not supported in the initial implementation. |
 | ADR-011 | The ledger side is a closed two-value enumeration: `ASST` (asset) and `LIAB` (liability). Not extensible without a Nucleus deployment. Supersedes provisional examples (`LEND`, `SAVE`, `MORT`) in earlier documents. |
 | ADR-012 | Package structure follows bounded context boundaries; flat compound names (`accountfeatures`, not `account.features`); acyclic dependency graph with `parameters` as the foundational package. |
+| ADR-013 | Exception types used to produce HTTP error responses are defined in the root `iterator.nucleus` package. Sub-packages throw root-defined exceptions. `ErrorHandler` is the single `@ControllerAdvice`. `NucleusValidationException` is the standard mechanism for structured validation failures. |
 
 Persona and role documents in `docs/personas/` and `docs/roles/` define the actors in
 the system and the modes in which Claude Code operates in this repository.
