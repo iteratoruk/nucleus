@@ -6,6 +6,8 @@ import iterator.nucleus.audit.AbstractAuditEvent
 import iterator.nucleus.audit.AuditService
 import iterator.nucleus.audit.NucleusAuditEventType
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.ManyToOne
 import org.springframework.stereotype.Service
@@ -23,13 +25,19 @@ data class ClassificationCode(
   val ledgerSide: LedgerSide
     get() = LedgerSide.valueOf(value.substringBefore("_"))
 
+  val ancestorCodes: List<ClassificationCode>
+    get() {
+      val segments = value.split("_")
+      return (1 until segments.size).map { ClassificationCode(segments.take(it).joinToString("_")) }
+    }
+
   override fun toString(): String = value
 }
 
 @Entity
 class ParameterNode(
   val classificationCode: String,
-  val ledgerSide: String,
+  @Enumerated(EnumType.STRING) val ledgerSide: LedgerSide,
 ) : AbstractJpaEntity()
 
 interface ParameterNodeRepository : AbstractJpaRepository<ParameterNode> {
@@ -58,22 +66,8 @@ class ParameterNodeService(
     effectiveDatetime: Instant,
     parameterValues: Map<String, String>,
   ) {
-    val existingNode = parameterNodeRepository.findByClassificationCode(code.value)
-    val node =
-      existingNode
-        ?: parameterNodeRepository.save(
-          ParameterNode(classificationCode = code.value, ledgerSide = code.ledgerSide.name),
-        )
-
-    if (existingNode == null) {
-      auditService.publishAuditEvent(
-        NodeCreatedEvent(
-          classificationCode = code.value,
-          ledgerSide = code.ledgerSide.name,
-          creationTimestamp = node.createdDate!!,
-        ),
-      )
-    }
+    code.ancestorCodes.forEach { ensureNodeExists(it) }
+    val node = ensureNodeExists(code)
 
     parameterValues.forEach { (parameterKey, value) ->
       val savedValue =
@@ -98,18 +92,35 @@ class ParameterNodeService(
       )
     }
   }
+
+  private fun ensureNodeExists(code: ClassificationCode): ParameterNode {
+    val existing = parameterNodeRepository.findByClassificationCode(code.value)
+    if (existing != null) return existing
+    val node =
+      parameterNodeRepository.save(
+        ParameterNode(classificationCode = code.value, ledgerSide = code.ledgerSide),
+      )
+    auditService.publishAuditEvent(
+      NodeCreatedEvent(
+        classificationCode = code.value,
+        ledgerSide = code.ledgerSide,
+        creationTimestamp = node.createdDate!!,
+      ),
+    )
+    return node
+  }
 }
 
 data class NodeCreatedEvent(
   val classificationCode: String,
-  val ledgerSide: String,
+  val ledgerSide: LedgerSide,
   val creationTimestamp: Instant = Instant.now(),
 ) : AbstractAuditEvent(
     type = NucleusAuditEventType.NODE_CREATED,
     data =
       mapOf(
         "classificationCode" to classificationCode,
-        "ledgerSide" to ledgerSide,
+        "ledgerSide" to ledgerSide.name,
       ),
   )
 

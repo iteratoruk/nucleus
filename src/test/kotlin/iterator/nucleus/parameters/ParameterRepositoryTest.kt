@@ -24,7 +24,7 @@ class ParameterNodeRepositoryTest
     override fun randomValidEntity() =
       ParameterNode(
         classificationCode = randomAlphanumeric(16),
-        ledgerSide = randomEnum<LedgerSide>().name,
+        ledgerSide = randomEnum<LedgerSide>(),
       )
 
     @Test
@@ -55,7 +55,7 @@ class ParameterValueRepositoryTest
       val node =
         ParameterNode(
           classificationCode = randomAlphanumeric(16),
-          ledgerSide = randomEnum<LedgerSide>().name,
+          ledgerSide = randomEnum<LedgerSide>(),
         )
       persistAndFlush(node)
       return ParameterValue(

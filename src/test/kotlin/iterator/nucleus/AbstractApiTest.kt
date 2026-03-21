@@ -34,9 +34,12 @@ abstract class AbstractApiTest(
 ) : TestContainers {
   @Autowired lateinit var auditService: AuditService
 
+  val mockAuditService: MockAuditService
+    get() = auditService as MockAuditService
+
   @BeforeEach
   fun resetAuditServiceMock() {
-    (auditService as MockAuditService).clear()
+    mockAuditService.clear()
   }
 }
 

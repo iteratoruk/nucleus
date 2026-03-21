@@ -2,7 +2,6 @@ package iterator.nucleus.accountfeatures
 
 import iterator.nucleus.AbstractApiTest
 import iterator.nucleus.NucleusHeaders
-import iterator.nucleus.audit.MockAuditService
 import iterator.nucleus.audit.NucleusAuditEventType
 import iterator.nucleus.parameters.NodeCreatedEvent
 import iterator.nucleus.parameters.ParameterValueSetEvent
@@ -47,8 +46,6 @@ class AccountFeaturesApiTest
           jsonPath("$.features.liabilityInterest.interestRate") { value("0.0350000") }
         }
 
-      val mockAuditService = auditService as MockAuditService
-
       val nodeCreatedEvents =
         mockAuditService
           .getAuditEvents(NucleusAuditEventType.NODE_CREATED)
@@ -68,6 +65,62 @@ class AccountFeaturesApiTest
         assertThat(event.effectiveDatetime).isEqualTo(Instant.parse("2026-04-01T00:00:00Z"))
       }
       assertThat(parameterValueSetEvents).anySatisfy { event ->
+        assertThat(event.parameterKey).isEqualTo("liabilityInterest.interestRate")
+        assertThat(event.value).isEqualTo("0.0350000")
+        assertThat(event.effectiveDatetime).isEqualTo(Instant.parse("2026-04-01T00:00:00Z"))
+      }
+    }
+
+    @Test
+    fun `intermediate ancestor nodes are created as empty nodes when registering a deep classification code`() {
+      givenNodeExists("LIAB")
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          header(NucleusHeaders.CLIENT_ID, "test-configurer")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true,
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.enabled") { value(true) }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0350000") }
+        }
+
+      val nodeCreatedEvents =
+        mockAuditService
+          .getAuditEvents(NucleusAuditEventType.NODE_CREATED)
+          .filterIsInstance<NodeCreatedEvent>()
+
+      assertThat(nodeCreatedEvents.map { it.classificationCode })
+        .contains("LIAB_INAS", "LIAB_INAS_2026")
+
+      val parameterValueSetEvents =
+        mockAuditService
+          .getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)
+          .filterIsInstance<ParameterValueSetEvent>()
+
+      assertThat(parameterValueSetEvents.filter { it.classificationCode == "LIAB_INAS" }).isEmpty()
+      assertThat(parameterValueSetEvents.filter { it.classificationCode == "LIAB_INAS_2026" })
+        .hasSize(2)
+      assertThat(parameterValueSetEvents).anySatisfy { event ->
+        assertThat(event.classificationCode).isEqualTo("LIAB_INAS_2026")
+        assertThat(event.parameterKey).isEqualTo("liabilityInterest.enabled")
+        assertThat(event.value).isEqualTo("true")
+        assertThat(event.effectiveDatetime).isEqualTo(Instant.parse("2026-04-01T00:00:00Z"))
+      }
+      assertThat(parameterValueSetEvents).anySatisfy { event ->
+        assertThat(event.classificationCode).isEqualTo("LIAB_INAS_2026")
         assertThat(event.parameterKey).isEqualTo("liabilityInterest.interestRate")
         assertThat(event.value).isEqualTo("0.0350000")
         assertThat(event.effectiveDatetime).isEqualTo(Instant.parse("2026-04-01T00:00:00Z"))
