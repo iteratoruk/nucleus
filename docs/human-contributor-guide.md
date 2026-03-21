@@ -170,6 +170,14 @@ code or tests.
 and tests, written in strict red-green-refactor order. No story authoring or
 architectural decisions.
 
+`task-implementor.md` — task implementation sessions. Output is behaviour-preserving
+changes to the codebase, verified by the full test suite and static analysis. No new
+functional behaviour, no new tests, no architectural decisions.
+
+The architect role also handles spike sessions (session type 4 in the architect role
+file). A spike is not a separate role — it is a distinct entry point and output type
+within the architect role.
+
 **One role per session.** Do not mix roles in a single Claude Code session. An
 architecture question that surfaces during a TDD session should be parked, noted,
 and addressed in a subsequent architecture session — not resolved inline.
@@ -192,11 +200,48 @@ session — before opening a TDD session against it.
 
 ---
 
+### `/docs/spikes/`
+
+Spike documents produced when a question blocks a story or architectural decision.
+Each spike is a separate markdown file named by identifier and abbreviated question:
+`spk-NNN-short-title.md`.
+
+Each spike follows the template in `docs/spikes/SPK-000-spike-template.md`: question,
+motivation, time-box, approach, determined output, and result. The result section is
+populated at the end of the spike session.
+
+Spike sessions use the architect role (`docs/roles/architect.md`), specifically the
+Spike Session type defined there. A spike document must be partially completed — with
+the Question, Motivation, Time-Box, Approach, and Determined Output fields filled in —
+before a spike session is opened.
+
+Spike identifiers use the `SPK-NNN` sequence. Commits that produce spike documents
+use the `docs:` conventional commit prefix.
+
+---
+
+### `/docs/tasks/`
+
+Task documents for behaviour-preserving engineering work. Each task is a separate
+markdown file named by identifier and short title:
+`tsk-NNN-short-title.md`.
+
+Each task follows the template in `docs/tasks/TSK-000-task-template.md`: goal,
+motivation, scope boundary, verification steps, and findings. The findings section
+is populated during execution.
+
+Task sessions use the task-implementor role (`docs/roles/task-implementor.md`).
+
+Task identifiers use the `TSK-NNN` sequence. Commits for task work use the `chore:`
+conventional commit prefix.
+
+---
+
 ## Contributing with Claude Code
 
-### The Three Roles
+### The Four Roles
 
-All Claude Code contribution falls into one of three roles. Each has a defined
+All Claude Code contribution falls into one of four roles. Each has a defined
 scope, a role instruction file, and a prompt template below.
 
 **Never mix roles in a single session.** If a TDD session surfaces an architectural
@@ -219,12 +264,19 @@ Before opening any session:
   loaded.
 - For architecture sessions: confirm what is settled (do not re-litigate) and what
   is open (do not assume).
+- For spike sessions: confirm the spike document exists with the Question, Motivation,
+  Time-Box, Approach, and Determined Output fields complete before starting.
+- For task sessions: confirm the baseline is green before making any changes.
 
 At the end of any session that produces output:
 - Ask Claude Code to save all outputs to the appropriate `docs/` location before
   clearing or closing the session.
 - For TDD sessions: confirm which scenarios are now covered by passing tests and
   record this in the story file.
+- For spike sessions: confirm the Result section of the spike document has been
+  populated and the determined output has been saved to disk.
+- For task sessions: confirm the full build passes and any findings have been recorded
+  in the task document before closing.
 
 ---
 
@@ -357,6 +409,107 @@ for confirmation before writing any production code.
 
 ---
 
+### Spike Session
+
+Use when: a question cannot be answered confidently enough to write a story or make
+an architectural decision, and that question is blocking identifiable work.
+
+Before opening this session, create and partially complete the spike document at
+`docs/spikes/spk-NNN-[short-title].md`. Fill in the Question, Motivation, Time-Box,
+Approach, and Determined Output fields. The session begins from the document, not
+from an open-ended area.
+
+```
+@docs/roles/architect.md
+@docs/spikes/spk-NNN-[short-title].md
+@docs/architecture/[relevant-doc].md   ← if the spike concerns an existing domain area
+
+---
+
+We are opening a spike session for **SPK-NNN: [Question in abbreviated form]**.
+
+The spike document is at `docs/spikes/spk-NNN-[short-title].md`. The Question,
+Motivation, Time-Box, Approach, and Determined Output fields are complete.
+
+## What this spike must answer
+
+[Restate the question from the spike document in one sentence.]
+
+## What is blocked
+
+[Name the story, ADR, or decision that cannot proceed until this is answered.]
+
+## Time-box
+
+[Restate the initial allocation from the spike document.]
+
+## Proceed
+
+Begin the investigation following the approach in the spike document. Record findings
+in the Result section as they arise. Produce the determined output declared in the
+spike document. Surface the state explicitly at the time-box boundary.
+```
+
+---
+
+### Task Session
+
+Use when: a piece of engineering work must be done that has no functional impact on
+the system's behaviour when performed correctly — dependency upgrades, package
+restructuring, linting rule application, framework migrations.
+
+Before opening this session, create the task document at
+`docs/tasks/tsk-NNN-[short-title].md` with the Goal, Motivation, Scope Boundary, and
+Verification Steps complete.
+
+```
+@docs/roles/task-implementor.md
+@docs/tasks/tsk-NNN-[short-title].md
+
+---
+
+We are opening a task session for **TSK-NNN: [Task title]**.
+
+## Pre-task confirmation
+
+Before making any changes, confirm:
+
+1. The task document is complete: Goal, Motivation, Scope Boundary, and Verification
+   Steps are all stated.
+2. The baseline is green: run `./gradlew test`, `./gradlew detekt`, and
+   `./gradlew spotlessCheck` against the unmodified codebase and confirm all pass.
+
+## Scope boundary for this session
+
+[Restate the scope boundary from the task document. Name anything adjacent that is
+explicitly not part of this task.]
+
+## Proceed
+
+Execute the task within the stated scope. Record any findings — regressions,
+candidate stories, candidate spikes — in the task document's Findings section.
+Do not absorb findings into the implementation. Confirm the full build passes on
+completion.
+```
+
+---
+
+## Identifier Sequences and Commit Conventions
+
+| Work unit | Identifier | Commit prefix | Location |
+|---|---|---|---|
+| User story | `NUC-NNN` | `feat:` / `fix:` | `docs/user-stories/nuc-NNN-title.md` |
+| Spike | `SPK-NNN` | `docs:` | `docs/spikes/spk-NNN-title.md` |
+| Task | `TSK-NNN` | `chore:` | `docs/tasks/tsk-NNN-title.md` |
+| ADR | `ADR-NNN` | `docs:` | `docs/architecture/adrs/adr-NNN-title.md` |
+
+All commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).
+The identifier (`NUC-NNN`, `SPK-NNN`, `TSK-NNN`) may be included in the commit
+message body or as a scope (`feat(NUC-001): ...`) but is not required in the subject
+line if the message is otherwise unambiguous.
+
+---
+
 ## Common Failure Modes
 
 **Architecture questions surfacing in TDD sessions.** Park them. Note the question
@@ -385,3 +538,23 @@ relevant to the current session. Loading the full persona cast, all architecture
 documents, and all user stories into a single session produces worse results than
 loading the three or four documents that are genuinely needed. The `@` reference
 system exists to make selective loading easy — use it selectively.
+
+**Spikes that produce code.** A spike session that begins producing production code
+has drifted into implementation. Stop. Save whatever investigation output exists.
+Open a story authoring session to capture the requirement, then a TDD session to
+implement it. The spike is complete when its determined output is produced — not when
+the code is written.
+
+**Spikes without a determined output.** A spike whose Determined Output field says
+"TBD" or "depends on what we find" is not ready to open. The output type must be
+decided before the session begins. If it is genuinely unclear what form the answer
+should take, that is a question for an architecture session, not a spike.
+
+**Tasks that introduce functional behaviour.** A task that changes what the system
+does — rather than how it is structured — has become a story. If this is discovered
+mid-task, stop, record the finding in the task document, and open a story authoring
+session. Do not ship functional behaviour under a `chore:` commit.
+
+**Weakening tests to make a task pass.** If a task causes tests to fail and the
+correct response is not to fix the task implementation, that is a finding — not a
+reason to modify the tests. Record it and surface it before proceeding.

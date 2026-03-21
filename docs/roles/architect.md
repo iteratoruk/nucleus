@@ -108,6 +108,41 @@ Process:
 
 Output: a structured review document, or a set of explicit questions to be resolved with the story author.
 
+### 4. Spike Session
+
+*Used when a question cannot be answered confidently enough to write a story or make
+an architectural decision — an aporia that must be resolved before work can proceed.*
+
+Entry point: a spike document in `docs/spikes/`, opened and partially completed before
+the session begins. The Question, Motivation, Time-Box, Approach, and Determined Output
+fields must be filled in before the session starts. The session does not begin from a
+domain area or a candidate decision — it begins from the question the spike document
+names.
+
+The question drives the session. There is no model to produce unless the spike's
+determined output is a domain model or ADR. The investigation follows the approach
+stated in the spike document; departures from it are made explicit, not silent.
+
+Process:
+1. Restate the question precisely. Confirm it is answerable within the time-box.
+2. Work through the approach declared in the spike document.
+3. Populate the Result section of the spike document as the investigation progresses.
+   Do not wait until the end — record findings as they arise.
+4. Produce the output declared in the Determined Output field: write the ADR, save
+   the recommendation document, or complete the Demo Notes section.
+5. At the time-box boundary, surface the current state explicitly: what has been
+   answered, what remains open, and what additional time and approach would be needed
+   to close it. Do not silently continue past the time-box.
+
+Output: whatever the spike document declares in its Determined Output field — an ADR,
+a recommendation document, or completed demo notes. The spike document itself is
+updated with the Result. If the spike is abandoned before completion, the Result
+section records why and what would be needed to resume.
+
+The prohibition on production code applies identically to spike sessions. A spike that
+produces production code has become an implementation session. Stop, surface this, and
+open the appropriate role session instead.
+
 ---
 
 ## Domain Model Document Template
