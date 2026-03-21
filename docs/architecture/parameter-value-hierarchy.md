@@ -42,7 +42,8 @@ identifies whether the configuration pertains to the asset or liability side of 
 ledger, and the account-features API uses it to determine which catalogue features are
 valid for a given submission. This is an intrinsic property of a node and, by extension,
 of any account attached to it. No other element of the classification code is interpreted
-by Nucleus.
+by Nucleus. The ledger side is a closed two-value enumeration: `ASST` (asset) and `LIAB`
+(liability). See ADR-011.
 
 **Parameter node.** A node in the classification code tree. Has an identity (its
 classification code), a parent (implicit from the code structure), and zero or more
@@ -50,7 +51,7 @@ parameter values. A node with no explicit values is a valid node — it inherits
 from ancestors.
 
 **Root node.** A parameter node whose classification code consists of a single segment
-(e.g. `SAVE`, `LEND`). The root node for a ledger side is the first explicitly configured
+(e.g. `ASST`, `LIAB`). The root node for a ledger side is the first explicitly configured
 ancestor below the global node.
 
 **Global node.** A tacit, internal node that sits above all root nodes. Its values are
@@ -356,6 +357,25 @@ account-features endpoints. See ADR-007.
 
 ---
 
+## Open Questions
+
+**OQ-5: Account Node Attachment package placement.**
+
+The Account Node Attachment aggregate is assigned to the Parameter Configuration bounded
+context in this document. During the NUC-001 implementation session, the question arose
+whether it belongs in `iterator.nucleus.parameters` (following this document's context
+assignment) or in a future `iterator.nucleus.accounts` package, on the grounds that it
+governs an account's relationship to a node and will be a close collaborator of the
+account lifecycle context.
+
+The current implementation places it in `parameters` per this document. This placement
+should be revisited in the architecture session that defines the Account context in code —
+before any account lifecycle work begins. If the conclusion is that Account Node
+Attachment belongs in `accounts`, this document and any implemented code must be updated
+together. The question is deferred, not resolved.
+
+---
+
 ## ADR Candidates Summary
 
 | Candidate | Decision to be recorded |
@@ -367,3 +387,4 @@ account-features endpoints. See ADR-007.
 | ~~ADR-005: Feature catalogue structure~~ | ~~Resolved: unified catalogue, with side-specific features named distinctly and validity enforced by the ledger-side prefix at submission time. See OQ-3.~~ |
 | ADR-006: Explicit absence mechanism | The mechanism by which a child node may suppress inheritance of a parameter value from a parent node — signalling deliberate absence rather than non-configuration. |
 | ADR-007: Hypothetical configuration query endpoint | Nucleus exposes `GET /account-features/{classificationCode}?asAt={date}` to allow configurers to verify resolved configuration without opening an account. |
+| ADR-012 | Package structure and bounded context boundaries: the top-level package layout, the dependency rules between bounded contexts, and the rationale for flat compound package names over nested package hierarchies. |

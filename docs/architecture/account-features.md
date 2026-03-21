@@ -57,7 +57,9 @@ derives the parameter keys.
 declared in the catalogue definition for each feature. The account-features API enforces
 this constraint at submission time using the ledger side of the submitted classification
 code (its first segment). A submission that includes a feature not applicable to the
-classification code's ledger side is rejected with a structured, actionable error.
+classification code's ledger side is rejected with a structured, actionable error. The
+ledger side is a closed two-value enumeration — `ASST` (asset) and `LIAB` (liability) —
+as defined in ADR-011. No other value is valid as a first classification code segment.
 
 **Feature catalogue.** The complete, versioned set of account feature definitions: their
 names, properties, value types, applicable ledger sides, and derived parameter keys. The
@@ -120,8 +122,8 @@ property applicable to the wrong ledger side.
 **First constraint — ledger-side enforcement at submission time.** The account-features
 API determines the ledger side of the submitted classification code from its first
 segment, and rejects any feature in the submission that is not declared applicable to
-that ledger side. A configurer cannot write a `liabilityInterest` configuration to a
-`LEND` node; the API will reject it before any write reaches the parameter value
+that ledger side. A configurer cannot write a `liabilityInterest` configuration to an
+`ASST` node; the API will reject it before any write reaches the parameter value
 hierarchy. This constraint operates at the API layer — it is a guard at the point of
 entry.
 
@@ -129,7 +131,7 @@ entry.
 property resolves under a key prefixed with the feature name, there is no key shared
 between two features. The resolution function is catalogue-agnostic: it does not need to
 know that `assetInterest.interestRate` is an interest rate, or that it belongs to a
-feature applicable only to asset accounts. The key itself encodes this information
+feature applicable only to `ASST`-side accounts. The key itself encodes this information
 structurally. A consuming context that queries for `assetInterest.interestRate` will
 never receive a value that was submitted as `liabilityInterest.interestRate`, regardless
 of what the node tree contains.
@@ -362,25 +364,14 @@ writes. The feature definitions in this document do not expose explicit absence 
 first-class client-visible concept in the initial implementation. This must be resolved
 before any story that requires a client to suppress inheritance is implemented.
 
-**OQ-2: Ledger side classification governance. ADR-011 candidate.**
+**OQ-2: Ledger side classification governance. RESOLVED.**
 
-The API enforces ledger-side applicability of features at submission time. This requires
-the system to know, for each possible first classification code segment, whether it
-designates an asset side or a liability side. How this is declared, stored, and extended
-is not yet defined.
-
-For the initial implementation, a declared enumeration within Nucleus is sufficient: the
-system knows that `LEND` is the asset side and `SAVE` and `MORT` are liability sides.
-But the governance question — whether this enumeration is extensible by external clients,
-whether new ledger side designations require a Nucleus deployment, and whether the
-classification code structure itself is the appropriate mechanism for encoding ledger
-side — carries long-term architectural consequence and should be recorded explicitly
-before the node tree grows beyond the initial three root nodes.
-
-This question does not block the initial TDD implementation, which operates against
-known classification code prefixes. It must be resolved before the system is expected to
-support a fourth root node or before the ledger-side designation logic is tested as a
-standalone concern.
+The ledger side is a closed two-value enumeration — `ASST` (asset) and `LIAB`
+(liability) — implemented as an internal Nucleus type. The two values express the
+direction of the financial relationship between Nucleus and the account holder; they are
+the structural expression of double-entry accounting, not a product taxonomy. The
+enumeration is not configurable or extensible by external clients; adding a third value
+requires a Nucleus deployment. See ADR-011.
 
 ---
 
@@ -391,4 +382,5 @@ standalone concern.
 | ADR-008 | Feature-namespaced parameter key convention: `{featureName}.{propertyName}` as the internal key structure, and the two-constraint safety model (ledger-side enforcement at submission plus key-level namespace segregation) that makes cross-feature mis-resolution structurally impossible. |
 | ADR-009 | Effective datetime granularity in the account-features API: a single effective datetime per submission applies to all properties in the request, and its resolution to the current datetime when absent is an explicit substitution, not an implicit system clock dependency. |
 | ADR-010 | Explicit absence in the account-features API representation: how deliberate absence (an explicit absence marker in the parameter hierarchy) is distinguished from non-configuration in both the read and write paths, and what mechanism clients use to set explicit absence. |
-| ADR-011 | Ledger side classification governance: how the system knows which first classification code segments designate asset sides and which designate liability sides, whether this is extensible without a Nucleus deployment, and whether the classification code structure is the right long-term mechanism for encoding ledger side. |
+| ~~ADR-011~~ | ~~Ledger side classification governance.~~ Resolved: the ledger side is a closed two-value enumeration (`ASST`, `LIAB`); not extensible without a deployment. See ADR-011. |
+| ADR-012 | Package structure and bounded context boundaries: the top-level package layout, the dependency rules between bounded contexts, and the rationale for flat compound package names over nested package hierarchies. |

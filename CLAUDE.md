@@ -95,6 +95,8 @@ The `docs/architecture/adrs/` directory contains Architecture Decision Records:
 | ADR-007 | `GET /account-features/{classificationCode}?asAt={date}` returns resolved classification-node configuration for a hypothetical account without requiring an account to exist. |
 | ADR-008 | Parameter keys follow `{featureName}.{propertyName}` — the feature name is the namespace, making cross-feature mis-resolution structurally impossible independent of API-layer validation. |
 | ADR-009 | The account-features API uses a single submission-level effective date applying to all properties; per-property effective dates are not supported in the initial implementation. |
+| ADR-011 | The ledger side is a closed two-value enumeration: `ASST` (asset) and `LIAB` (liability). Not extensible without a Nucleus deployment. Supersedes provisional examples (`LEND`, `SAVE`, `MORT`) in earlier documents. |
+| ADR-012 | Package structure follows bounded context boundaries; flat compound names (`accountfeatures`, not `account.features`); acyclic dependency graph with `parameters` as the foundational package. |
 
 Persona and role documents in `docs/personas/` and `docs/roles/` define the actors in
 the system and the modes in which Claude Code operates in this repository.
