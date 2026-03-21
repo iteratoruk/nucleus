@@ -15,22 +15,22 @@ Effective datetime and write datetime are distinct. The effective datetime is a 
 ### Scenario: Configuration submitted with a future effective datetime does not govern current resolution
 
 ```gherkin
-Given no account feature configuration exists for classification code "SAVE_INAS_2026" with an effective datetime on or before 2026-03-20T12:00:00Z
-When Cameron submits account feature configuration for classification code "SAVE_INAS_2026" with an effective datetime of 2026-04-01T00:00:00Z
+Given no account feature configuration exists for classification code "LIAB_INAS_2026" with an effective datetime on or before 2026-03-20T12:00:00Z
+When Cameron submits account feature configuration for classification code "LIAB_INAS_2026" with an effective datetime of 2026-04-01T00:00:00Z
 Then the submission is accepted
-And no applicable value exists for classification code "SAVE_INAS_2026" at resolution datetime 2026-03-20T12:00:00Z
-And the submitted features are the applicable configuration for classification code "SAVE_INAS_2026" at resolution datetime 2026-04-01T00:00:00Z
+And no applicable value exists for classification code "LIAB_INAS_2026" at resolution datetime 2026-03-20T12:00:00Z
+And the submitted features are the applicable configuration for classification code "LIAB_INAS_2026" at resolution datetime 2026-04-01T00:00:00Z
 ```
 
 ### Scenario: Configuration submitted with a past effective datetime in an open period is immediately applicable
 
 ```gherkin
 Given the period containing 2026-03-01T00:00:00Z is an open period
-And no account feature configuration exists for classification code "SAVE_INAS_2026"
-When Cameron submits account feature configuration for classification code "SAVE_INAS_2026" with an effective datetime of 2026-03-01T00:00:00Z
+And no account feature configuration exists for classification code "LIAB_INAS_2026"
+When Cameron submits account feature configuration for classification code "LIAB_INAS_2026" with an effective datetime of 2026-03-01T00:00:00Z
 Then the submission is accepted
-And the submitted features are the applicable configuration for classification code "SAVE_INAS_2026" at resolution datetime 2026-03-01T00:00:00Z
-And the submitted features are the applicable configuration for classification code "SAVE_INAS_2026" at resolution datetime 2026-03-20T12:00:00Z
+And the submitted features are the applicable configuration for classification code "LIAB_INAS_2026" at resolution datetime 2026-03-01T00:00:00Z
+And the submitted features are the applicable configuration for classification code "LIAB_INAS_2026" at resolution datetime 2026-03-20T12:00:00Z
 ```
 
 **Out of Scope:**

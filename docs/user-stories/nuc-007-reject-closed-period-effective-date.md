@@ -16,7 +16,7 @@ A closed period is one for which Nucleus has completed all scheduled processing 
 
 ```gherkin
 Given the period containing 2026-02-01T00:00:00Z is a closed period
-When Cameron submits account feature configuration for classification code "SAVE_INAS_2026" with an effective datetime of 2026-02-01T00:00:00Z
+When Cameron submits account feature configuration for classification code "LIAB_INAS_2026" with an effective datetime of 2026-02-01T00:00:00Z
 Then the submission is rejected
 And the rejection states that the effective datetime 2026-02-01T00:00:00Z falls within a closed period
 And no parameter node is created or modified
@@ -26,11 +26,11 @@ And no parameter node is created or modified
 
 ```gherkin
 Given the period containing 2026-02-01T00:00:00Z is a closed period
-And account feature configuration for classification code "SAVE_INAS_2026" includes feature "F" with active value "V1" at effective datetime 2026-02-01T00:00:00Z
-When Cameron submits account feature configuration for classification code "SAVE_INAS_2026" with feature "F" set to value "V2" and effective datetime 2026-02-01T00:00:00Z
+And account feature configuration for classification code "LIAB_INAS_2026" includes feature "F" with active value "V1" at effective datetime 2026-02-01T00:00:00Z
+When Cameron submits account feature configuration for classification code "LIAB_INAS_2026" with feature "F" set to value "V2" and effective datetime 2026-02-01T00:00:00Z
 Then the submission is rejected
 And the rejection states that the effective datetime 2026-02-01T00:00:00Z falls within a closed period
-And the applicable value of feature "F" for classification code "SAVE_INAS_2026" at effective datetime 2026-02-01T00:00:00Z remains "V1"
+And the applicable value of feature "F" for classification code "LIAB_INAS_2026" at effective datetime 2026-02-01T00:00:00Z remains "V1"
 ```
 
 **Out of Scope:**

@@ -15,31 +15,31 @@ The default resolution behaviour for a key not configured at a node is to walk u
 ### Scenario: A feature set to explicitly absent at a child node is not inherited from the parent
 
 ```gherkin
-Given a parameter node exists for classification code "SAVE" with feature "F" set to value "V" at effective datetime 2026-01-01T00:00:00Z
-And a parameter node exists for classification code "SAVE_INAS"
-And feature "F" is set to explicitly absent at classification code "SAVE_INAS" with an effective datetime of 2026-01-01T00:00:00Z
-When the applicable value of feature "F" is resolved for classification code "SAVE_INAS" at resolution datetime 2026-04-01T00:00:00Z
+Given a parameter node exists for classification code "LIAB" with feature "F" set to value "V" at effective datetime 2026-01-01T00:00:00Z
+And a parameter node exists for classification code "LIAB_INAS"
+And feature "F" is set to explicitly absent at classification code "LIAB_INAS" with an effective datetime of 2026-01-01T00:00:00Z
+When the applicable value of feature "F" is resolved for classification code "LIAB_INAS" at resolution datetime 2026-04-01T00:00:00Z
 Then no value is returned for feature "F"
 ```
 
 ### Scenario: A feature not configured at a child node inherits from the parent
 
 ```gherkin
-Given a parameter node exists for classification code "SAVE" with feature "F" set to value "V" at effective datetime 2026-01-01T00:00:00Z
-And a parameter node exists for classification code "SAVE_INAS"
-And feature "F" has never been configured at classification code "SAVE_INAS"
-When the applicable value of feature "F" is resolved for classification code "SAVE_INAS" at resolution datetime 2026-04-01T00:00:00Z
+Given a parameter node exists for classification code "LIAB" with feature "F" set to value "V" at effective datetime 2026-01-01T00:00:00Z
+And a parameter node exists for classification code "LIAB_INAS"
+And feature "F" has never been configured at classification code "LIAB_INAS"
+When the applicable value of feature "F" is resolved for classification code "LIAB_INAS" at resolution datetime 2026-04-01T00:00:00Z
 Then the applicable value of feature "F" is "V"
 ```
 
 ### Scenario: An explicit absence marker is superseded by a concrete value
 
 ```gherkin
-Given a parameter node exists for classification code "SAVE" with feature "F" set to value "V" at effective datetime 2026-01-01T00:00:00Z
-And feature "F" is set to explicitly absent at classification code "SAVE_INAS" with an effective datetime of 2026-01-01T00:00:00Z
-When Cameron submits account feature configuration for classification code "SAVE_INAS" with feature "F" set to value "W" and effective datetime 2026-01-01T00:00:00Z
+Given a parameter node exists for classification code "LIAB" with feature "F" set to value "V" at effective datetime 2026-01-01T00:00:00Z
+And feature "F" is set to explicitly absent at classification code "LIAB_INAS" with an effective datetime of 2026-01-01T00:00:00Z
+When Cameron submits account feature configuration for classification code "LIAB_INAS" with feature "F" set to value "W" and effective datetime 2026-01-01T00:00:00Z
 Then the submission is accepted
-And the applicable value of feature "F" for classification code "SAVE_INAS" at resolution datetime 2026-04-01T00:00:00Z is "W"
+And the applicable value of feature "F" for classification code "LIAB_INAS" at resolution datetime 2026-04-01T00:00:00Z is "W"
 ```
 
 **Out of Scope:**

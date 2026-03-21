@@ -16,10 +16,10 @@ Validation occurs at write time. The errors returned must identify which feature
 
 ```gherkin
 Given a specific account feature is only valid for asset-side accounts
-When Cameron submits account feature configuration for classification code "SAVE_INAS" that includes the asset-side-only feature
+When Cameron submits account feature configuration for classification code "LIAB_INAS" that includes the asset-side-only feature
 Then the submission is rejected
 And the rejection identifies the invalid feature by name
-And the rejection states that the feature is not applicable to the "SAVE" ledger side
+And the rejection states that the feature is not applicable to the "LIAB" ledger side
 And no parameter node is created or modified
 ```
 
@@ -27,7 +27,7 @@ And no parameter node is created or modified
 
 ```gherkin
 Given a specific account feature expects a value of a declared type
-When Cameron submits account feature configuration for classification code "SAVE_INAS" where that feature carries a value that does not conform to its declared type
+When Cameron submits account feature configuration for classification code "LIAB_INAS" where that feature carries a value that does not conform to its declared type
 Then the submission is rejected
 And the rejection identifies the invalid feature by name
 And the rejection states why the submitted value is invalid
@@ -45,7 +45,7 @@ And the rejection identifies the structural violation in the classification code
 ### Scenario: A submission with multiple invalid features reports all violations
 
 ```gherkin
-Given account feature configuration is submitted for classification code "SAVE_INAS" with two features that each fail validation for different reasons
+Given account feature configuration is submitted for classification code "LIAB_INAS" with two features that each fail validation for different reasons
 When the submission is processed
 Then the submission is rejected
 And the rejection identifies both invalid features by name
