@@ -78,6 +78,7 @@ dependencies {
 
 	/* Testing dependencies */
   testImplementation("com.redis:testcontainers-redis:2.2.4")
+  testImplementation("com.tngtech.archunit:archunit-junit5:1.4.1")
 	testImplementation("com.thedeanda:lorem:2.2")
 	testImplementation("org.awaitility:awaitility:4.3.0")
 	testImplementation("org.awaitility:awaitility-kotlin:4.3.0")
