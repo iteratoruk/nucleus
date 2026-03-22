@@ -60,6 +60,11 @@ interface ParameterValueRepository : AbstractJpaRepository<ParameterValue> {
     parameterKey: String,
     effectiveDatetime: Instant,
   ): ParameterValue?
+
+  fun findByParameterNodeAndEffectiveDatetimeLessThanEqualAndSupersededAtIsNull(
+    parameterNode: ParameterNode,
+    effectiveDatetime: Instant,
+  ): List<ParameterValue>
 }
 
 @Service
@@ -127,6 +132,26 @@ class ParameterNodeService(
         ),
       )
     }
+  }
+
+  fun resolve(
+    code: ClassificationCode,
+    asAt: Instant,
+  ): Map<String, String> {
+    val nodeCodes = listOf(code) + code.ancestorCodes.reversed()
+    val resolved = mutableMapOf<String, String>()
+    for (nodeCode in nodeCodes) {
+      val node = parameterNodeRepository.findByClassificationCode(nodeCode.value) ?: continue
+      parameterValueRepository
+        .findByParameterNodeAndEffectiveDatetimeLessThanEqualAndSupersededAtIsNull(node, asAt)
+        .groupBy { it.parameterKey }
+        .forEach { (key, entries) ->
+          if (key !in resolved) {
+            resolved[key] = entries.maxBy { it.effectiveDatetime }.value
+          }
+        }
+    }
+    return resolved
   }
 
   private fun ensureNodeExists(code: ClassificationCode): ParameterNode {

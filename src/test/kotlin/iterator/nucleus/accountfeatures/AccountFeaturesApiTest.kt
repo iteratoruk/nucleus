@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.put
 import java.time.Instant
 import java.util.UUID
@@ -25,6 +26,68 @@ class AccountFeaturesApiTest
     ctx: GenericApplicationContext,
     mvc: MockMvc,
   ) : AbstractApiTest(ctx, mvc) {
+    @Autowired lateinit var processingBoundaryClosureRepository: ProcessingBoundaryClosureRepository
+
+    @Test
+    fun `configuration submitted with a past effective datetime in an open period is immediately applicable`() {
+      assertThat(processingBoundaryClosureRepository.count()).isZero()
+
+      givenNodeExists("LIAB")
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "NUC6-S2")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-03-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true,
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mvc
+        .get("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron")
+          param("asAt", "2026-03-01T00:00:00Z")
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.enabled") { value(true) }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0350000") }
+        }
+
+      mvc
+        .get("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron")
+          param("asAt", "2026-03-20T12:00:00Z")
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.enabled") { value(true) }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0350000") }
+        }
+
+      val parameterValueSetEvents =
+        mockAuditService
+          .getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)
+          .filterIsInstance<ParameterValueSetEvent>()
+          .filter { it.classificationCode == "LIAB_INAS_2026" }
+      assertThat(parameterValueSetEvents).hasSize(2)
+      assertThat(parameterValueSetEvents).anySatisfy { event ->
+        assertThat(event.parameterKey).isEqualTo("liabilityInterest.enabled")
+        assertThat(event.effectiveDatetime).isEqualTo(Instant.parse("2026-03-01T00:00:00Z"))
+      }
+      assertThat(parameterValueSetEvents).anySatisfy { event ->
+        assertThat(event.parameterKey).isEqualTo("liabilityInterest.interestRate")
+        assertThat(event.effectiveDatetime).isEqualTo(Instant.parse("2026-03-01T00:00:00Z"))
+      }
+    }
+
     @Test
     fun `a new classification code is registered with account feature configuration`() {
       givenNodeExists("LIAB")
@@ -456,6 +519,69 @@ class AccountFeaturesApiTest
       assertThat(supersededEvent.parameterKey).isEqualTo("liabilityInterest.interestRate")
       assertThat(supersededEvent.effectiveDatetime).isEqualTo(Instant.parse("2026-04-01T00:00:00Z"))
       assertThat(supersededEvent.supersededValue).isEqualTo("0.0350000")
+    }
+
+    @Test
+    fun `configuration submitted with a future effective datetime does not govern resolution before the effective datetime`() {
+      givenNodeExists("LIAB")
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "NUC6-S1")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true,
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mvc
+        .get("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron")
+          param("asAt", "2026-03-20T12:00:00Z")
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest") { doesNotExist() }
+        }
+
+      mvc
+        .get("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron")
+          param("asAt", "2026-04-01T00:00:00Z")
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.enabled") { value(true) }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0350000") }
+        }
+
+      val nodeCreatedEvents =
+        mockAuditService
+          .getAuditEvents(NucleusAuditEventType.NODE_CREATED)
+          .filterIsInstance<NodeCreatedEvent>()
+      assertThat(nodeCreatedEvents.map { it.classificationCode }).contains("LIAB_INAS_2026")
+
+      val parameterValueSetEvents =
+        mockAuditService
+          .getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)
+          .filterIsInstance<ParameterValueSetEvent>()
+          .filter { it.classificationCode == "LIAB_INAS_2026" }
+      assertThat(parameterValueSetEvents).hasSize(2)
+      assertThat(parameterValueSetEvents).anySatisfy { event ->
+        assertThat(event.parameterKey).isEqualTo("liabilityInterest.enabled")
+        assertThat(event.effectiveDatetime).isEqualTo(Instant.parse("2026-04-01T00:00:00Z"))
+      }
+      assertThat(parameterValueSetEvents).anySatisfy { event ->
+        assertThat(event.parameterKey).isEqualTo("liabilityInterest.interestRate")
+        assertThat(event.effectiveDatetime).isEqualTo(Instant.parse("2026-04-01T00:00:00Z"))
+      }
     }
 
     private fun givenNodeExists(classificationCode: String) {

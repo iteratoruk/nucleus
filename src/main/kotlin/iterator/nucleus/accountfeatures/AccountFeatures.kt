@@ -1,6 +1,8 @@
 package iterator.nucleus.accountfeatures
 
 import com.fasterxml.jackson.module.kotlin.convertValue
+import iterator.nucleus.AbstractJpaEntity
+import iterator.nucleus.AbstractJpaRepository
 import iterator.nucleus.NucleusHeaders
 import iterator.nucleus.NucleusValidationException
 import iterator.nucleus.NucleusViolation
@@ -11,30 +13,61 @@ import iterator.nucleus.parameters.ClassificationCode
 import iterator.nucleus.parameters.LedgerSide
 import iterator.nucleus.parameters.ParameterNodeService
 import iterator.nucleus.sevenDecimalPlaceViolation
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.memberProperties
+
+enum class ProcessingBoundary {
+  BUSINESS_DAY_CLOSE,
+  WEEK_CLOSE,
+  MONTH_CLOSE,
+  QUARTER_CLOSE,
+  YEAR_CLOSE,
+  TAX_YEAR_CLOSE,
+}
+
+@Target(AnnotationTarget.PROPERTY)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class BoundaryGoverned(
+  val boundary: ProcessingBoundary,
+)
+
+@Entity
+class ProcessingBoundaryClosure(
+  @Enumerated(EnumType.STRING) val boundary: ProcessingBoundary,
+  val closureTimestamp: Instant,
+) : AbstractJpaEntity()
+
+interface ProcessingBoundaryClosureRepository : AbstractJpaRepository<ProcessingBoundaryClosure> {
+  fun findTopByBoundaryOrderByClosureTimestampDesc(boundary: ProcessingBoundary): ProcessingBoundaryClosure?
+}
 
 interface AccountFeature
 
 data class LiabilityInterestFeature(
   val enabled: Boolean? = null,
-  val interestRate: BigDecimal? = null,
+  @BoundaryGoverned(ProcessingBoundary.BUSINESS_DAY_CLOSE) val interestRate: BigDecimal? = null,
 ) : AccountFeature
 
 data class AssetInterestFeature(
   val enabled: Boolean? = null,
-  val interestRate: BigDecimal? = null,
+  @BoundaryGoverned(ProcessingBoundary.BUSINESS_DAY_CLOSE) val interestRate: BigDecimal? = null,
 ) : AccountFeature
 
 data class FeatureConfiguration(
@@ -44,16 +77,31 @@ data class FeatureConfiguration(
   fun presentFeatures(): List<AccountFeature> = listOfNotNull(liabilityInterest, assetInterest)
 }
 
-private val featureNameCache = ConcurrentHashMap<KClass<*>, String>()
-
 private fun featureNameFor(klass: KClass<out AccountFeature>): String =
-  featureNameCache.getOrPut(klass) {
-    klass.simpleName!!.removeSuffix("Feature").replaceFirstChar { it.lowercase() }
-  }
+  klass.simpleName!!.removeSuffix("Feature").replaceFirstChar { it.lowercase() }
 
 @Component
 class FeatureCatalogueConverter {
   private val objectMapper = Serialization.mapper
+
+  fun toFeatureConfiguration(parameterValues: Map<String, String>): FeatureConfiguration {
+    val byFeature =
+      parameterValues.entries
+        .groupBy { it.key.substringBefore(".") }
+        .mapValues { (_, entries) ->
+          entries.associate { it.key.substringAfter(".") to it.value }
+        }
+    return FeatureConfiguration(
+      liabilityInterest =
+        byFeature["liabilityInterest"]?.let {
+          objectMapper.convertValue(it, LiabilityInterestFeature::class.java)
+        },
+      assetInterest =
+        byFeature["assetInterest"]?.let {
+          objectMapper.convertValue(it, AssetInterestFeature::class.java)
+        },
+    )
+  }
 
   fun toParameterValues(features: FeatureConfiguration): Map<String, String> =
     features
@@ -82,6 +130,12 @@ data class AccountFeaturesResponse(
 class AccountFeaturesController(
   val service: AccountFeaturesService,
 ) {
+  @GetMapping("/{classificationCode}")
+  fun get(
+    @PathVariable classificationCode: String,
+    @RequestParam(required = false) asAt: Instant?,
+  ): AccountFeaturesResponse = service.get(classificationCode, asAt ?: Instant.now())
+
   @PutMapping("/{classificationCode}")
   fun put(
     @PathVariable classificationCode: String,
@@ -141,6 +195,7 @@ class AccountFeaturesService(
   val parameterNodeService: ParameterNodeService,
   val featureCatalogueConverter: FeatureCatalogueConverter,
   val idempotencyService: IdempotencyService,
+  val processingBoundaryClosureRepository: ProcessingBoundaryClosureRepository,
 ) {
   fun put(
     classificationCode: String,
@@ -158,7 +213,8 @@ class AccountFeaturesService(
     val code = ClassificationCode(classificationCode)
     val violations =
       ledgerSideApplicabilityViolations(code.ledgerSide, request.features) +
-        propertyConstraintViolations(request.features)
+        propertyConstraintViolations(request.features) +
+        opennessViolations(request.features)
     if (violations.isNotEmpty()) throw NucleusValidationException(violations)
     parameterNodeService.write(
       code,
@@ -173,5 +229,33 @@ class AccountFeaturesService(
       response = response,
     )
     return response
+  }
+
+  private fun opennessViolations(features: FeatureConfiguration): List<NucleusViolation> =
+    features.presentFeatures().flatMap { feature ->
+      feature::class.memberProperties.mapNotNull { property ->
+        val annotation = property.findAnnotation<BoundaryGoverned>() ?: return@mapNotNull null
+        if (property.getter.call(feature) == null) return@mapNotNull null
+        processingBoundaryClosureRepository.findTopByBoundaryOrderByClosureTimestampDesc(
+          annotation.boundary,
+        ) ?: return@mapNotNull null
+        // closure exists: rejection comparison driven by NUC-007
+        null
+      }
+    }
+
+  fun get(
+    classificationCode: String,
+    asAt: Instant,
+  ): AccountFeaturesResponse {
+    val codeViolation = classificationCodeViolation(classificationCode)
+    if (codeViolation != null) throw NucleusValidationException(listOf(codeViolation))
+    val code = ClassificationCode(classificationCode)
+    return AccountFeaturesResponse(
+      features =
+        featureCatalogueConverter.toFeatureConfiguration(
+          parameterNodeService.resolve(code, asAt),
+        ),
+    )
   }
 }
