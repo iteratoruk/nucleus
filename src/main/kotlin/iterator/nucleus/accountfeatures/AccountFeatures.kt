@@ -1,10 +1,12 @@
 package iterator.nucleus.accountfeatures
 
 import com.fasterxml.jackson.module.kotlin.convertValue
+import iterator.nucleus.NucleusHeaders
 import iterator.nucleus.NucleusValidationException
 import iterator.nucleus.NucleusViolation
 import iterator.nucleus.Serialization
 import iterator.nucleus.Uris
+import iterator.nucleus.idempotency.IdempotencyService
 import iterator.nucleus.parameters.ClassificationCode
 import iterator.nucleus.parameters.LedgerSide
 import iterator.nucleus.parameters.ParameterNodeService
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
@@ -63,6 +66,8 @@ class FeatureCatalogueConverter {
       }.toMap()
 }
 
+private const val PUT_ACCOUNT_FEATURES = "PUT_ACCOUNT_FEATURES"
+
 data class PutAccountFeaturesRequest(
   val effectiveDatetime: Instant,
   val features: FeatureConfiguration,
@@ -80,8 +85,9 @@ class AccountFeaturesController(
   @PutMapping("/{classificationCode}")
   fun put(
     @PathVariable classificationCode: String,
+    @RequestHeader(NucleusHeaders.IDEMPOTENCY_KEY) idempotencyKey: String,
     @RequestBody request: PutAccountFeaturesRequest,
-  ): AccountFeaturesResponse = service.put(classificationCode, request)
+  ): AccountFeaturesResponse = service.put(classificationCode, idempotencyKey, request)
 }
 
 private val classificationCodeSegmentPattern = Regex("[A-Z0-9]{4}")
@@ -134,11 +140,19 @@ private fun ledgerSideApplicabilityViolations(
 class AccountFeaturesService(
   val parameterNodeService: ParameterNodeService,
   val featureCatalogueConverter: FeatureCatalogueConverter,
+  val idempotencyService: IdempotencyService,
 ) {
   fun put(
     classificationCode: String,
+    idempotencyKey: String,
     request: PutAccountFeaturesRequest,
   ): AccountFeaturesResponse {
+    idempotencyService
+      .findExistingResponse(PUT_ACCOUNT_FEATURES, idempotencyKey, AccountFeaturesResponse::class)
+      ?.let {
+        return it
+      }
+
     val codeViolation = classificationCodeViolation(classificationCode)
     if (codeViolation != null) throw NucleusValidationException(listOf(codeViolation))
     val code = ClassificationCode(classificationCode)
@@ -151,6 +165,13 @@ class AccountFeaturesService(
       request.effectiveDatetime,
       featureCatalogueConverter.toParameterValues(request.features),
     )
-    return AccountFeaturesResponse(features = request.features)
+    val response = AccountFeaturesResponse(features = request.features)
+    idempotencyService.record(
+      operationId = PUT_ACCOUNT_FEATURES,
+      idempotencyKey = idempotencyKey,
+      uri = "${Uris.API_V1}/account-features/$classificationCode",
+      response = response,
+    )
+    return response
   }
 }

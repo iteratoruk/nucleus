@@ -19,9 +19,18 @@ import org.springframework.scheduling.annotation.AsyncConfigurer
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.jdbc.Sql
+import org.springframework.test.web.servlet.MockHttpServletRequestDsl
 import org.springframework.test.web.servlet.MockMvc
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.util.concurrent.Executor
+
+fun MockHttpServletRequestDsl.withHeaders(
+  clientId: String,
+  idempotencyKey: String? = null,
+) {
+  header(NucleusHeaders.CLIENT_ID, clientId)
+  idempotencyKey?.let { header(NucleusHeaders.IDEMPOTENCY_KEY, it) }
+}
 
 @SpringBootTest
 @Testcontainers

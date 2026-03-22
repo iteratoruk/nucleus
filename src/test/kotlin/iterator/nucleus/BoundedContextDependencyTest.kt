@@ -19,4 +19,30 @@ class BoundedContextDependencyTest {
         "parameters is the foundational bounded context; " +
           "it must not depend on any other bounded context (ADR-012)",
       )
+
+  @ArchTest
+  val idempotencyMustNotDependOnParameters: ArchRule =
+    noClasses()
+      .that()
+      .resideInAPackage("iterator.nucleus.idempotency..")
+      .should()
+      .dependOnClassesThat()
+      .resideInAPackage("iterator.nucleus.parameters..")
+      .because(
+        "idempotency is a foundational cross-cutting package; " +
+          "it must not depend on any bounded context (ADR-012)",
+      )
+
+  @ArchTest
+  val idempotencyMustNotDependOnAccountfeatures: ArchRule =
+    noClasses()
+      .that()
+      .resideInAPackage("iterator.nucleus.idempotency..")
+      .should()
+      .dependOnClassesThat()
+      .resideInAPackage("iterator.nucleus.accountfeatures..")
+      .because(
+        "idempotency is a foundational cross-cutting package; " +
+          "it must not depend on any bounded context (ADR-012)",
+      )
 }

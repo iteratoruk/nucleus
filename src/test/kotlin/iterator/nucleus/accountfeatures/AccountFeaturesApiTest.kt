@@ -1,10 +1,10 @@
 package iterator.nucleus.accountfeatures
 
 import iterator.nucleus.AbstractApiTest
-import iterator.nucleus.NucleusHeaders
 import iterator.nucleus.audit.NucleusAuditEventType
 import iterator.nucleus.parameters.NodeCreatedEvent
 import iterator.nucleus.parameters.ParameterValueSetEvent
+import iterator.nucleus.withHeaders
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsInAnyOrder
 import org.hamcrest.Matchers.containsString
@@ -16,6 +16,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.put
 import java.time.Instant
+import java.util.UUID
 
 class AccountFeaturesApiTest
   @Autowired
@@ -29,7 +30,7 @@ class AccountFeaturesApiTest
 
       mvc
         .put("/api/v1/account-features/LIAB_INAS") {
-          header(NucleusHeaders.CLIENT_ID, "test-configurer")
+          withHeaders("test-configurer", "NUC1-T1")
           contentType = MediaType.APPLICATION_JSON
           content =
             """
@@ -80,7 +81,7 @@ class AccountFeaturesApiTest
 
       mvc
         .put("/api/v1/account-features/LIAB_INAS_2026") {
-          header(NucleusHeaders.CLIENT_ID, "test-configurer")
+          withHeaders("test-configurer", "NUC2-T1")
           contentType = MediaType.APPLICATION_JSON
           content =
             """
@@ -134,7 +135,7 @@ class AccountFeaturesApiTest
     fun `a submission containing a feature not valid for the ledger side is rejected`() {
       mvc
         .put("/api/v1/account-features/LIAB_INAS") {
-          header(NucleusHeaders.CLIENT_ID, "cameron")
+          withHeaders("cameron", "NUC3-T1")
           contentType = MediaType.APPLICATION_JSON
           content =
             """
@@ -164,7 +165,7 @@ class AccountFeaturesApiTest
     fun `a submission targeting a malformed classification code is rejected`() {
       mvc
         .put("/api/v1/account-features/LIAB-INAS") {
-          header(NucleusHeaders.CLIENT_ID, "cameron")
+          withHeaders("cameron", "NUC3-T2")
           contentType = MediaType.APPLICATION_JSON
           content =
             """
@@ -188,7 +189,7 @@ class AccountFeaturesApiTest
     fun `a submission containing an interest rate with more than 7 decimal places is rejected`() {
       mvc
         .put("/api/v1/account-features/LIAB_INAS") {
-          header(NucleusHeaders.CLIENT_ID, "cameron")
+          withHeaders("cameron", "NUC3-T3")
           contentType = MediaType.APPLICATION_JSON
           content =
             """
@@ -217,7 +218,7 @@ class AccountFeaturesApiTest
     fun `a submission with multiple invalid features reports all violations`() {
       mvc
         .put("/api/v1/account-features/LIAB_INAS") {
-          header(NucleusHeaders.CLIENT_ID, "cameron")
+          withHeaders("cameron", "NUC3-T4")
           contentType = MediaType.APPLICATION_JSON
           content =
             """
@@ -242,10 +243,160 @@ class AccountFeaturesApiTest
       assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
     }
 
+    @Test
+    fun `re-submission with the same idempotency key is accepted and the original configuration is preserved`() {
+      givenNodeExists("LIAB")
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "NUC4-S1")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true,
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mockAuditService.clear()
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "NUC4-S1")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true,
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.enabled") { value(true) }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0350000") }
+        }
+
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.NODE_CREATED)).isEmpty()
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
+    }
+
+    @Test
+    fun `re-submission with the same idempotency key and a different payload is a no-op`() {
+      givenNodeExists("LIAB")
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "NUC4-S2")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true,
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mockAuditService.clear()
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "NUC4-S2")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true,
+                  "interestRate": "0.0500000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0350000") }
+        }
+
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
+    }
+
+    @Test
+    fun `re-submission with the same idempotency key against a different classification code is a no-op`() {
+      givenNodeExists("LIAB")
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "NUC4-S3")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true,
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mockAuditService.clear()
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2027") {
+          withHeaders("cameron", "NUC4-S3")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true,
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      assertThat(
+        mockAuditService
+          .getAuditEvents(NucleusAuditEventType.NODE_CREATED)
+          .filterIsInstance<NodeCreatedEvent>()
+          .map { it.classificationCode },
+      ).doesNotContain("LIAB_INAS_2027")
+
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
+    }
+
     private fun givenNodeExists(classificationCode: String) {
       mvc
         .put("/api/v1/account-features/$classificationCode") {
-          header(NucleusHeaders.CLIENT_ID, "test-configurer")
+          withHeaders("test-configurer", "setup-$classificationCode-${UUID.randomUUID()}")
           contentType = MediaType.APPLICATION_JSON
           content = """{ "effectiveDatetime": "2026-01-01T00:00:00Z", "features": {} }"""
         }.andExpect { status { isOk() } }

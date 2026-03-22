@@ -11,6 +11,12 @@ class NucleusValidationException(
   val violations: List<NucleusViolation>,
 ) : RuntimeException()
 
+class NucleusInternalErrorException(
+  val code: NucleusErrorCode,
+  override val message: String,
+  cause: Throwable? = null,
+) : RuntimeException(message, cause)
+
 @ControllerAdvice
 class ErrorHandler {
   @ResponseBody
@@ -31,6 +37,15 @@ class ErrorHandler {
       message = "Validation failed",
       violations = e.violations,
     )
+
+  @ResponseBody
+  @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+  @ExceptionHandler(NucleusInternalErrorException::class)
+  fun handleInternalError(e: NucleusInternalErrorException): NucleusError =
+    NucleusError(
+      code = e.code,
+      message = e.message,
+    )
 }
 
 data class NucleusViolation(
@@ -47,4 +62,5 @@ data class NucleusError(
 enum class NucleusErrorCode {
   MISSING_HEADER,
   INVALID_FEATURE_CONFIGURATION,
+  IDEMPOTENT_OPERATION_RESPONSE_UNREADABLE,
 }

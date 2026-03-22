@@ -44,3 +44,11 @@ And no parameter node is created or modified for classification code "LIAB_INAS_
 
 **Open Questions:**
 None. If the permanent uniqueness requirement proves operationally inconvenient — for example due to storage constraints — this should be revisited in an architecture session before any relaxation is introduced.
+
+---
+
+**Technical Notes:**
+
+**Idempotency package.** Implementation of this story introduced `iterator.nucleus.idempotency` as a foundational cross-cutting package, sitting below `iterator.nucleus.parameters` in the dependency graph. It provides `IdempotencyService`, which exposes two operations: `findExistingResponse(operationId, idempotencyKey, type)` to retrieve a previously stored response by its operation-scoped key, and `record(operationId, idempotencyKey, uri, response)` to store a new accepted operation. The `idempotent_operation` table backs this service. All bounded context dependency rules in `BoundedContextDependencyTest` enforce that `idempotency` depends on nothing within the nucleus bounded context graph.
+
+**Response body storage and backward compatibility.** `IdempotencyService.record` serialises the response to JSON and stores it as text. `findExistingResponse` deserialises it back to the declared type on retrieval. This creates a latent backward compatibility obligation: any future change to a stored response type that is not deserialisation-compatible with previously stored bodies will cause `findExistingResponse` to throw `NucleusInternalErrorException(IDEMPOTENT_OPERATION_RESPONSE_UNREADABLE)` for affected keys. In the current pre-production state this carries no operational risk. Before any breaking change to a response type used by an idempotent operation, this obligation must be assessed and a migration strategy agreed. ADR candidate — extract when the first such change is proposed.

@@ -67,6 +67,7 @@ class BigDecimalToStringSerializer : StdSerializer<BigDecimal>(BigDecimal::class
 
 object NucleusHeaders {
   const val CLIENT_ID = "X-Client-ID"
+  const val IDEMPOTENCY_KEY = "Idempotency-Key"
 }
 
 object Serialization {
