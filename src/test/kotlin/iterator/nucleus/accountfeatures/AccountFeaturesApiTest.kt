@@ -4,6 +4,7 @@ import iterator.nucleus.AbstractApiTest
 import iterator.nucleus.audit.NucleusAuditEventType
 import iterator.nucleus.parameters.NodeCreatedEvent
 import iterator.nucleus.parameters.ParameterValueSetEvent
+import iterator.nucleus.parameters.ParameterValueSupersededEvent
 import iterator.nucleus.withHeaders
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsInAnyOrder
@@ -391,6 +392,70 @@ class AccountFeaturesApiTest
       ).doesNotContain("LIAB_INAS_2027")
 
       assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
+    }
+
+    @Test
+    fun `a revised value for the same effective datetime supersedes the previously active value`() {
+      givenNodeExists("LIAB")
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "NUC5-S1-setup")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": { "interestRate": "0.0350000" }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mockAuditService.clear()
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "NUC5-S1")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": { "interestRate": "0.0400000" }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0400000") }
+        }
+
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.NODE_CREATED)).isEmpty()
+
+      val setEvents =
+        mockAuditService
+          .getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)
+          .filterIsInstance<ParameterValueSetEvent>()
+      assertThat(setEvents).hasSize(1)
+      val setEvent = setEvents.single()
+      assertThat(setEvent.parameterKey).isEqualTo("liabilityInterest.interestRate")
+      assertThat(setEvent.value).isEqualTo("0.0400000")
+      assertThat(setEvent.priorValue).isEqualTo("0.0350000")
+      assertThat(setEvent.effectiveDatetime).isEqualTo(Instant.parse("2026-04-01T00:00:00Z"))
+
+      val supersededEvents =
+        mockAuditService
+          .getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SUPERSEDED)
+          .filterIsInstance<ParameterValueSupersededEvent>()
+      assertThat(supersededEvents).hasSize(1)
+      val supersededEvent = supersededEvents.single()
+      assertThat(supersededEvent.classificationCode).isEqualTo("LIAB_INAS_2026")
+      assertThat(supersededEvent.parameterKey).isEqualTo("liabilityInterest.interestRate")
+      assertThat(supersededEvent.effectiveDatetime).isEqualTo(Instant.parse("2026-04-01T00:00:00Z"))
+      assertThat(supersededEvent.supersededValue).isEqualTo("0.0350000")
     }
 
     private fun givenNodeExists(classificationCode: String) {

@@ -50,9 +50,17 @@ class ParameterValue(
   val parameterKey: String,
   val value: String,
   val effectiveDatetime: Instant,
-) : AbstractJpaEntity()
+) : AbstractJpaEntity() {
+  var supersededAt: Instant? = null
+}
 
-interface ParameterValueRepository : AbstractJpaRepository<ParameterValue>
+interface ParameterValueRepository : AbstractJpaRepository<ParameterValue> {
+  fun findByParameterNodeAndParameterKeyAndEffectiveDatetimeAndSupersededAtIsNull(
+    parameterNode: ParameterNode,
+    parameterKey: String,
+    effectiveDatetime: Instant,
+  ): ParameterValue?
+}
 
 @Service
 @Transactional
@@ -70,6 +78,33 @@ class ParameterNodeService(
     val node = ensureNodeExists(code)
 
     parameterValues.forEach { (parameterKey, value) ->
+      val existing =
+        parameterValueRepository
+          .findByParameterNodeAndParameterKeyAndEffectiveDatetimeAndSupersededAtIsNull(
+            node,
+            parameterKey,
+            effectiveDatetime,
+          )
+
+      val priorValue =
+        if (existing != null) {
+          val supersessionTimestamp = Instant.now()
+          existing.supersededAt = supersessionTimestamp
+          parameterValueRepository.save(existing)
+          auditService.publishAuditEvent(
+            ParameterValueSupersededEvent(
+              classificationCode = code.value,
+              parameterKey = parameterKey,
+              effectiveDatetime = effectiveDatetime,
+              supersededValue = existing.value,
+              supersessionTimestamp = supersessionTimestamp,
+            ),
+          )
+          existing.value
+        } else {
+          null
+        }
+
       val savedValue =
         parameterValueRepository.save(
           ParameterValue(
@@ -88,6 +123,7 @@ class ParameterNodeService(
           value = value,
           writeTimestamp = savedValue.createdDate!!,
           author = savedValue.createdBy,
+          priorValue = priorValue,
         ),
       )
     }
@@ -131,6 +167,7 @@ data class ParameterValueSetEvent(
   val value: String,
   val writeTimestamp: Instant = Instant.now(),
   val author: String? = null,
+  val priorValue: String? = null,
 ) : AbstractAuditEvent(
     type = NucleusAuditEventType.PARAMETER_VALUE_SET,
     data =
@@ -139,5 +176,22 @@ data class ParameterValueSetEvent(
         "parameterKey" to parameterKey,
         "effectiveDatetime" to effectiveDatetime.toString(),
         "value" to value,
+      ),
+  )
+
+data class ParameterValueSupersededEvent(
+  val classificationCode: String,
+  val parameterKey: String,
+  val effectiveDatetime: Instant,
+  val supersededValue: String,
+  val supersessionTimestamp: Instant = Instant.now(),
+) : AbstractAuditEvent(
+    type = NucleusAuditEventType.PARAMETER_VALUE_SUPERSEDED,
+    data =
+      mapOf(
+        "classificationCode" to classificationCode,
+        "parameterKey" to parameterKey,
+        "effectiveDatetime" to effectiveDatetime.toString(),
+        "supersededValue" to supersededValue,
       ),
   )
