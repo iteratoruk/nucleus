@@ -85,6 +85,44 @@ has been explicitly set to absent for a key stops inheritance.
 parameter values, set at opening time or subsequently, sit at this level and take
 precedence over all classification-code-level values during resolution.
 
+**Processing boundary.** A named category of scheduled processing. When all processing
+of a given class completes successfully for a given business date, the context that owns
+that processing emits a boundary completion event for the boundary name and business date.
+Parameter Configuration consumes these events and maintains a boundary projection: a map
+from boundary name to the most recent closure timestamp for that boundary. An account
+feature property governed by a named boundary may not be set with an effective datetime
+whose business date is on or before the most recent closure timestamp for that boundary.
+Named processing boundaries in current use: `BUSINESS_DAY_CLOSE` (closed by end-of-day
+processing, signalled by the `PeriodClosed` event defined in ADR-002), with `WEEK_CLOSE`,
+`MONTH_CLOSE`, `QUARTER_CLOSE`, `YEAR_CLOSE`, and `TAX_YEAR_CLOSE` reserved for future
+processing contexts.
+
+**Openness category.** A property of an account feature property definition that governs
+which effective datetimes are permitted at write time. Three categories exist:
+
+- `GLOBAL`: no constraint. Backdating to any effective datetime is always permitted,
+  regardless of the closure state of any processing boundary. `GLOBAL` is the absence
+  of a processing scope constraint, not a boundary name. It is the default for
+  properties with no explicit openness declaration.
+- Named boundary category (e.g. `BUSINESS_DAY_CLOSE`): backdating is permitted only
+  within the open window. The submitted effective datetime's business date must be
+  strictly after the most recent closure timestamp for the named boundary.
+- `PROSPECTIVE_ONLY`: the submitted effective datetime must be strictly after the
+  current wall-clock time at write time. Past effective datetimes are unconditionally
+  rejected. Applies to properties whose retrospective change would corrupt derived
+  internal properties already stored for open accounts.
+
+The constraint is enforced per property by the account-features API layer; see
+ADR-017, ADR-018, ADR-020.
+
+**Derived internal property.** A value that Nucleus calculates from one or more account
+feature property values at a defined lifecycle event (typically account opening) and
+stores as an immutable fact in the Account context. A derived internal property is not
+a parameter value in the hierarchy. The existence of a derived internal property is
+the criterion for classifying its originating feature property as `PROSPECTIVE_ONLY`:
+if a retroactive effective datetime change to the feature property would corrupt the
+stored derived value, the property must be `PROSPECTIVE_ONLY`. See ADR-019.
+
 **Write audit trail.** The record of all values that have ever been submitted for a given
 (node, key, effective datetime) triple, in submission order. The write audit trail is distinct
 from the parameter value history: the history is the set of values at different effective
@@ -132,11 +170,27 @@ node is created.
 4. Only Nucleus may write to the global node. No external client may submit values for the
    global node.
 
-5. A parameter value whose effective datetime falls within a closed period may not be set or
-   superseded. Nucleus must reject such a submission at write time. A parameter value with
-   an effective datetime in the past but within an open period is permitted — this is late
-   registration, not backdating, and carries no consistency risk because no financial
-   processing for that period has been finalised.
+5. A parameter value may not be set or superseded if the submission violates the openness
+   constraint declared for its parameter key in the feature catalogue. Three forms of
+   constraint apply, determined by the openness category of the property associated with
+   the parameter key:
+
+   - **`GLOBAL` properties**: no constraint. Any effective datetime is permitted. This is
+     the default for properties with no explicit openness declaration.
+   - **Named boundary-governed properties** (e.g. `BUSINESS_DAY_CLOSE`): the effective
+     datetime's business date must be strictly after the most recent closure timestamp
+     maintained by Parameter Configuration for the named boundary. A past effective
+     datetime within the open window is late registration — it carries no consistency risk
+     and is permitted. A past effective datetime on or before the closure timestamp is
+     rejected. See ADR-002 (BUSINESS_DAY_CLOSE case) and ADR-017 (general model).
+   - **`PROSPECTIVE_ONLY` properties**: the effective datetime must be strictly after the
+     current wall-clock time at write time. Past effective datetimes are rejected
+     unconditionally, regardless of boundary state. See ADR-018.
+
+   The openness constraint is enforced by the account-features API layer during validation,
+   before any write reaches the Parameter Node aggregate. All openness violations in a
+   submission are collected and returned together; any violation causes the entire
+   submission to be rejected. See ADR-020.
 
 **Entities within this aggregate:**
 
@@ -272,6 +326,113 @@ applied to 2026-04-01 processing even if the job runs after 2026-04-02 begins.
 
 ---
 
+## Processing Boundaries
+
+A processing boundary is a named category of scheduled processing. When all processing
+of a given class completes successfully for a given business date, the context that owns
+that processing emits a boundary completion event carrying the boundary name and the
+closed business date. Parameter Configuration consumes these events and maintains its own
+boundary projection — a durable map from boundary name to the most recent closure
+timestamp for that boundary. The projection is updated by event consumption; it is never
+inferred from parameter write history or resolution call patterns, and it is never queried
+from the Account Servicing context or any other context.
+
+Boundary lifecycle events:
+- **Boundary completion event**: records the closed business date for the named boundary.
+  Subsequent completion events for the same boundary advance the closure timestamp.
+  Duplicate completion events for the same (boundary, business date) pair are idempotent.
+- **Boundary reopening event**: reverses a closure for the named boundary and business
+  date, re-opening the window for that date. A reopening event for a pair not currently
+  closed is idempotent.
+
+The `PeriodClosed` and `PeriodReopened` events defined in ADR-002 are the concrete
+instantiation of this pattern for the `BUSINESS_DAY_CLOSE` boundary. Their event names,
+payload structure, and idempotency guarantees are established by ADR-002 and are not
+changed here.
+
+Named boundaries in current use: `BUSINESS_DAY_CLOSE`. The following are reserved for
+future processing contexts whose closure cadence differs from daily end-of-day:
+`WEEK_CLOSE`, `MONTH_CLOSE`, `QUARTER_CLOSE`, `YEAR_CLOSE`, `TAX_YEAR_CLOSE`. A named
+boundary with no production source behaves as permanently open; its introduction requires
+a corresponding event production path.
+
+---
+
+## Openness Categories
+
+The openness category of a feature property governs which effective datetimes are valid
+at write time. It is declared on the property definition in the feature catalogue and is
+not configurable at submission time. The default for properties with no explicit
+declaration is `GLOBAL`.
+
+**`GLOBAL`.** No processing scope constraint applies. Backdating to any effective datetime
+is always permitted, regardless of the closure state of any processing boundary. `GLOBAL`
+is the explicit absence of a processing scope constraint, not a boundary name. It is the
+correct category for properties that do not feed any processing class that produces
+finalised outputs, and the provisional default for properties whose processing scope has
+not yet been identified. See ADR-017.
+
+**Named boundary categories** (e.g. `BUSINESS_DAY_CLOSE`). The submitted effective
+datetime's business date (the date portion of the UTC datetime) must be strictly after
+the most recent closure timestamp for the named boundary. A past effective datetime within
+the open window is late registration: permitted, carrying no consistency risk, because the
+processing class has not yet finalised results for that business date. A past effective
+datetime on or before the closure timestamp is rejected with a structured error identifying
+the property, the boundary category, and the closed business date.
+
+**`PROSPECTIVE_ONLY`.** The submitted effective datetime must be strictly after the current
+wall-clock time at write time. The comparison is on full datetimes (UTC, to second
+precision), not on business dates. A past effective datetime is unconditionally rejected
+regardless of boundary state. Future effective datetimes are unconditionally permitted.
+`PROSPECTIVE_ONLY` is not a boundary-governed category; it does not consult the boundary
+projection. It is a structural constraint arising from the existence of derived internal
+properties. See ADR-018 and the Derived Internal Properties section below.
+
+**Per-property validation.** When a submission contains properties with mixed openness
+categories, each property is validated against its own declaration independently. Any
+violation causes the entire submission to be rejected. All violations are reported
+together. See ADR-020.
+
+---
+
+## Derived Internal Properties
+
+A derived internal property is a value that Nucleus calculates from one or more account
+feature property values at a defined lifecycle event and stores as an immutable fact in
+the Account context. It is not a parameter value: it belongs to the Account context, not
+the Parameter Configuration context, and is not subject to resolution, supersession, or
+direct configuration by external clients.
+
+**The identification principle.** A feature property P gives rise to a derived internal
+property when:
+
+1. Nucleus computes a value from P and account-specific data at a defined lifecycle event
+   (typically account opening), using the values resolved from the parameter hierarchy at
+   that moment.
+2. The computed value is stored immutably in the Account context as a fact about the
+   account from that point forward.
+3. A retroactive change to P's effective datetime — setting an effective datetime that
+   precedes the lifecycle event at which derivation occurred — would make the stored
+   derived value inconsistent with what would have been calculated had the revised
+   configuration been in force at the lifecycle event.
+
+When all three conditions are met, P must be classified `PROSPECTIVE_ONLY`. This is the
+direct consequence of the derived value's immutability. A property that does not
+contribute to any derived internal property must not be classified `PROSPECTIVE_ONLY`;
+doing so removes late registration capability without a corresponding benefit.
+
+**Maturity date.** The first identified derived internal property. Calculated at account
+opening as `maturity_date = opening_datetime + fixed_term_period`, where the fixed term
+period is the value of the `fixedTerm.termPeriod` feature property resolved from the
+parameter hierarchy at opening time. The result is stored immutably against the account
+in the Account context. Therefore, `fixedTerm.termPeriod` is classified `PROSPECTIVE_ONLY`.
+Accounts open when a new fixed term period configuration takes effect retain their
+opening-time maturity dates; the new configuration applies only to accounts opened on or
+after the new effective datetime. The fixed term period feature and the maturity date are
+not yet implemented; this section is their first architectural definition. See ADR-019.
+
+---
+
 ## Context Relationships
 
 **Account context (downstream from Parameter Configuration):**
@@ -388,3 +549,7 @@ together. The question is deferred, not resolved.
 | ADR-006: Explicit absence mechanism | The mechanism by which a child node may suppress inheritance of a parameter value from a parent node — signalling deliberate absence rather than non-configuration. |
 | ADR-007: Hypothetical configuration query endpoint | Nucleus exposes `GET /account-features/{classificationCode}?asAt={date}` to allow configurers to verify resolved configuration without opening an account. |
 | ADR-012 | Package structure and bounded context boundaries: the top-level package layout, the dependency rules between bounded contexts, and the rationale for flat compound package names over nested package hierarchies. |
+| ADR-017 | Processing boundary model and openness categories: three distinct categories (`GLOBAL`, named boundary, `PROSPECTIVE_ONLY`); `GLOBAL` as the permissive default; `BUSINESS_DAY_CLOSE` as the boundary for end-of-day processing; the boundary projection maintained by Parameter Configuration. |
+| ADR-018 | `PROSPECTIVE_ONLY` openness category: effective datetime must be strictly after wall-clock time at write; applies to properties whose retrospective change corrupts derived internal properties; wall-clock constraint is sufficient without per-account knowledge. |
+| ADR-019 | Derived internal properties: identification principle; Account context ownership; maturity date as first instance; any contributing property must be `PROSPECTIVE_ONLY`. |
+| ADR-020 | Per-property openness validation in mixed-category submissions: each property validated against its own category; total rejection on any failure; exhaustive per-property error attribution. |

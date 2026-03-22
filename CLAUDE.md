@@ -105,6 +105,10 @@ The `docs/architecture/adrs/` directory contains Architecture Decision Records:
 | ADR-014 | Idempotency keys are scoped to (operation ID, idempotency key) only — not to any resource dimension (classification code, account, etc.) — and do not expire. A recognised key returns the original stored response unconditionally. |
 | ADR-015 | Idempotent response bodies are serialised to JSON text for persistence and deserialised on retrieval. Breaking changes to serialised response types require a migration strategy before deployment. |
 | ADR-016 | The `idempotency` package is a foundational cross-cutting context: it depends on nothing within the Nucleus bounded context graph, enforced by `BoundedContextDependencyTest`. All bounded contexts may consume it freely; it may never depend on any of them without superseding this ADR. |
+| ADR-017 | Three openness categories: `GLOBAL` (no constraint, permissive default), named processing boundary (e.g. `BUSINESS_DAY_CLOSE` — backdating within open window only), and `PROSPECTIVE_ONLY`. `PeriodClosed`/`PeriodReopened` from ADR-002 are the lifecycle events for `BUSINESS_DAY_CLOSE`. |
+| ADR-018 | `PROSPECTIVE_ONLY` openness category: effective datetime must be strictly after wall-clock time at write; applies to properties whose past-effective change would corrupt derived internal properties of already-open accounts. |
+| ADR-019 | Derived internal properties: values Nucleus calculates from feature properties at account opening and stores immutably in the Account context. The maturity date (from `fixedTerm.termPeriod`) is the first instance. Contributing properties must be `PROSPECTIVE_ONLY`. |
+| ADR-020 | Per-property openness validation: each property validated against its own openness category independently; any violation causes total submission rejection with per-property error attribution. |
 
 Persona and role documents in `docs/personas/` and `docs/roles/` define the actors in
 the system and the modes in which Claude Code operates in this repository.

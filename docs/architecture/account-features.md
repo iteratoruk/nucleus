@@ -74,6 +74,16 @@ boundary contract: it may only be extended (new features, new properties on exis
 features), never reduced or modified in ways that break existing submissions or responses.
 The versioning mechanism is outside the scope of this document.
 
+**Openness category.** A constraint declared on a feature property definition that governs
+which effective datetimes are permitted when writing that property. Defined in full in the
+parameter value hierarchy domain model. Three categories: `GLOBAL` (no constraint, the
+default), a named processing boundary category such as `BUSINESS_DAY_CLOSE` (backdating
+within the open window only), and `PROSPECTIVE_ONLY` (future effective datetimes only).
+Every property in the catalogue carries an explicit openness declaration; the default for
+properties with no explicit declaration is `GLOBAL`. The openness category is part of the
+property definition contract and is reported in structured error responses when a submission
+is rejected for an openness violation.
+
 **Interest rate.** A gross annual rate expressed as a decimal fraction to seven decimal
 places (e.g. `0.0350000` for 3.5%). The rate is stored and resolved exactly as provided;
 no implicit conversion to or from percentage notation occurs within Nucleus. HALF_EVEN
@@ -169,10 +179,10 @@ assumed from this document.
 
 **Properties:**
 
-| Property name | Parameter key | Type | Precision | Notes |
-|---|---|---|---|---|
-| `enabled` | `assetInterest.enabled` | boolean | — | Whether asset interest is operative on the account. A resolved absent value is treated as disabled by the consuming context. |
-| `interestRate` | `assetInterest.interestRate` | decimal | 7 d.p. | Gross annual interest rate as a decimal fraction. `0.0350000` represents 3.5%. Must be non-negative. No upper bound is enforced in this version. |
+| Property name | Parameter key | Type | Precision | Openness | Notes |
+|---|---|---|---|---|---|
+| `enabled` | `assetInterest.enabled` | boolean | — | `GLOBAL` | Whether asset interest is operative on the account. A resolved absent value is treated as disabled by the consuming context. Classified `GLOBAL`: toggling this flag retroactively does not directly corrupt any finalised numerical record — it changes whether interest should have been calculated, but does not alter the accrual amounts or ledger entries that were actually posted. This classification should be revisited if Account Servicing modelling reveals that the enabled state produces a finalised output dependent on specific historical values. |
+| `interestRate` | `assetInterest.interestRate` | decimal | 7 d.p. | `BUSINESS_DAY_CLOSE` | Gross annual interest rate as a decimal fraction. `0.0350000` represents 3.5%. Must be non-negative. No upper bound is enforced in this version. Classified `BUSINESS_DAY_CLOSE`: a rate change backdated past a closed business day would mean the accrual calculated for that day used the wrong rate, directly contradicting the posted ledger entry which is an immutable fact. The `BUSINESS_DAY_CLOSE` boundary prevents rate changes from becoming effective on any business date for which accruals have already been finalised. |
 
 **Note on `enabled`.** `enabled` is a property of the `assetInterest` feature, not a
 shared mechanism across features. The parameter key `assetInterest.enabled` is distinct
@@ -194,10 +204,44 @@ of this session. The namespace `liabilityInterest.*` is reserved.
 
 **Properties:**
 
-| Property name | Parameter key | Type | Precision | Notes |
-|---|---|---|---|---|
-| `enabled` | `liabilityInterest.enabled` | boolean | — | Whether liability interest is operative on the account. A resolved absent value is treated as disabled by the consuming context. |
-| `interestRate` | `liabilityInterest.interestRate` | decimal | 7 d.p. | Gross annual interest rate as a decimal fraction. `0.0350000` represents 3.5%. Must be non-negative. No upper bound is enforced in this version. |
+| Property name | Parameter key | Type | Precision | Openness | Notes |
+|---|---|---|---|---|---|
+| `enabled` | `liabilityInterest.enabled` | boolean | — | `GLOBAL` | Whether liability interest is operative on the account. A resolved absent value is treated as disabled by the consuming context. Classified `GLOBAL` for the same reason as `assetInterest.enabled`: toggling retroactively changes the configuration basis for whether interest ran, but does not corrupt any finalised numerical output. Revisit if Account Servicing modelling reveals a finalised dependency. |
+| `interestRate` | `liabilityInterest.interestRate` | decimal | 7 d.p. | `BUSINESS_DAY_CLOSE` | Gross annual interest rate as a decimal fraction. `0.0350000` represents 3.5%. Must be non-negative. No upper bound is enforced in this version. Classified `BUSINESS_DAY_CLOSE` for the same reason as `assetInterest.interestRate`: a backdated rate change directly contradicts the posted accrual entries for the closed business days it would retroactively affect. |
+
+---
+
+### Fixed Term
+
+**Feature name:** `fixedTerm`
+
+**Applicable ledger sides:** asset, liability
+
+**Description.** Governs the duration of a fixed-term period for accounts where the
+product has a defined maturity date. The fixed term period is the canonical example of
+a feature property that gives rise to a derived internal property: at account opening,
+Nucleus calculates the maturity date as `opening_datetime + fixedTerm.termPeriod` and
+stores the result immutably in the Account context. Because the maturity date is an
+immutable stored fact derived from this property, `fixedTerm.termPeriod` carries the
+`PROSPECTIVE_ONLY` openness category.
+
+This feature and its maturity date derived property are not yet implemented. This entry
+is their first architectural definition. Its purpose in this document is to establish
+the `PROSPECTIVE_ONLY` openness category with a concrete example and to reserve the
+`fixedTerm.*` parameter key namespace.
+
+**Properties:**
+
+| Property name | Parameter key | Type | Precision | Openness | Notes |
+|---|---|---|---|---|---|
+| `termPeriod` | `fixedTerm.termPeriod` | ISO 8601 duration | — | `PROSPECTIVE_ONLY` | The duration of the fixed-term period (e.g. `P12M` for twelve months). Combined with the account's opening datetime at account opening time to calculate the maturity date, which is stored immutably in the Account context. A past effective datetime would corrupt stored maturity dates of accounts already opened against nodes in the affected subtree. **Not yet implemented.** |
+
+**Derived internal property: Maturity date.** Calculated once at account opening as
+`maturity_date = opening_datetime + fixedTerm.termPeriod`. Stored immutably in the
+Account context. Not configurable directly by external clients. Accounts opened before
+a new `fixedTerm.termPeriod` effective datetime retain the maturity date calculated at
+their opening time; the new term period applies only to accounts opened on or after the
+new effective datetime.
 
 ---
 
@@ -251,12 +295,25 @@ must not be required to do so.
    feature name and the ledger side mismatch.
 5. Each property value is validated: type correctness, format, and any declared value
    constraints (e.g. non-negative for `interestRate`).
-6. Validation is exhaustive: all errors across all features and all properties are
-   collected and returned together. A single error does not short-circuit validation of
-   the remaining submission. This follows the constraint established in the configurer
-   personas that invalid configuration must be rejected with structured, actionable
-   errors.
-7. If validation passes, all property values are written as parameter values at the
+6. Each property's openness category is checked against its declaration in the feature
+   catalogue. For `GLOBAL` properties: no constraint applies; the check always passes. For
+   named boundary-governed properties (e.g. `BUSINESS_DAY_CLOSE`): the effective datetime's
+   business date is checked against the boundary projection maintained by Parameter
+   Configuration for the declared boundary. A business date on or before the boundary's
+   most recent closure timestamp causes the property to fail with a structured error
+   identifying the feature name, property name, boundary category name, and the violated
+   closure date. For `PROSPECTIVE_ONLY` properties: the effective datetime is compared to
+   the current wall-clock time at the moment of validation. An effective datetime that is
+   not strictly after write time causes the property to fail with a structured error
+   identifying the feature name, property name, the `PROSPECTIVE_ONLY` constraint, the
+   submitted effective datetime, and the wall-clock time at validation. Openness validation
+   is per-property: each property is evaluated against its own declaration independently
+   of the others.
+7. Validation is exhaustive: all errors from steps 3 through 6, across all features and
+   all properties, are collected and returned together. A single error does not
+   short-circuit validation of the remaining submission. Any failure causes the entire
+   submission to be rejected; no partial application occurs.
+8. If validation passes, all property values are written as parameter values at the
    classification node with the supplied effective datetime. Each property is written
    independently as a separate parameter value keyed under its derived parameter key.
    All writes are subject to the closed period constraint established in the parameter
@@ -384,3 +441,7 @@ requires a Nucleus deployment. See ADR-011.
 | ADR-010 | Explicit absence in the account-features API representation: how deliberate absence (an explicit absence marker in the parameter hierarchy) is distinguished from non-configuration in both the read and write paths, and what mechanism clients use to set explicit absence. |
 | ~~ADR-011~~ | ~~Ledger side classification governance.~~ Resolved: the ledger side is a closed two-value enumeration (`ASST`, `LIAB`); not extensible without a deployment. See ADR-011. |
 | ADR-012 | Package structure and bounded context boundaries: the top-level package layout, the dependency rules between bounded contexts, and the rationale for flat compound package names over nested package hierarchies. |
+| ADR-017 | Processing boundary model and openness categories: three distinct categories (`GLOBAL`, named boundary, `PROSPECTIVE_ONLY`); `GLOBAL` as the permissive default; `BUSINESS_DAY_CLOSE` as the boundary for end-of-day processing. |
+| ADR-018 | `PROSPECTIVE_ONLY` openness category: effective datetime must be strictly after wall-clock time at write; applies to properties whose retrospective change corrupts derived internal properties. |
+| ADR-019 | Derived internal properties: identification principle; Account context ownership; maturity date as first instance; any contributing property must be `PROSPECTIVE_ONLY`. |
+| ADR-020 | Per-property openness validation with total submission rejection: each property validated against its own category, errors collected per-property, any violation causes complete rejection. |

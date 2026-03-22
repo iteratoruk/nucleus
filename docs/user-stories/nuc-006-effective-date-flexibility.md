@@ -38,3 +38,45 @@ And the submitted features are the applicable configuration for classification c
 
 **Open Questions:**
 None.
+
+---
+
+## Architecture Impact Note (from processing boundary session, 2026-03-22)
+
+**What the model now means for this story:**
+
+Both properties used in the scenarios (`liabilityInterest.enabled` and
+`liabilityInterest.interestRate`) are GLOBAL-boundary properties. The story as written
+remains correct, but the Given conditions can now be stated precisely:
+
+- "The period containing 2026-03-01T00:00:00Z is an open period" now means: the
+  GLOBAL boundary's closed-date set does not contain the business date 2026-03-01. In
+  the current pre-production state, the GLOBAL boundary has no closed dates, so this
+  Given is trivially satisfied.
+
+**What should change before TDD begins:**
+
+The scenarios do not need to be revised for the GLOBAL-boundary properties they cover.
+However, the story does not address the NEVER openness category at all. A new scenario
+is required to cover submission of a NEVER property with a past effective datetime — a
+third case of effective datetime semantics distinct from both the future-dating and
+open-period-backdating cases already covered. This scenario may be:
+
+- Added to this story as a third scenario (consistent with the story's theme of
+  effective datetime flexibility), or
+- Added to NUC-007 as a parallel rejection scenario alongside the closed-period
+  rejection cases.
+
+The latter placement is recommended: NUC-007 is already the story for "effective
+datetime constraints that cause rejection," and NEVER violations are a form of rejection
+constraint. The distinction between them (NEVER is a structural property constraint;
+closed-period is a boundary-state constraint) should be reflected in separate scenarios
+with distinct Given conditions, both in NUC-007.
+
+**The key scenario to add (placement: NUC-007):**
+
+A submission for a `PROSPECTIVE_ONLY` property (e.g. `fixedTerm.termPeriod`) with a past
+effective datetime is rejected, and the rejection error identifies the property, the
+`PROSPECTIVE_ONLY` constraint, the submitted effective datetime, and the wall-clock time at
+validation. This scenario requires `fixedTerm` feature implementation, which is not yet
+scoped. It should be held until the fixed term feature story is written.
