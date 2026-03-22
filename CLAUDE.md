@@ -81,6 +81,10 @@ derivable from the code alone and explain why alternatives were rejected.
   account behaviour, feature definitions (asset interest, liability interest), the
   parameter key mapping convention, the account-features API contract, and resolution
   safety guarantees.
+- `docs/architecture/idempotency.md` — domain model for the idempotency cross-cutting
+  context: the idempotent operation aggregate, the (operation ID, idempotency key)
+  identity model, stored response semantics, the no-op resubmission guarantee, and
+  the foundational dependency isolation constraint.
 
 The `docs/architecture/adrs/` directory contains Architecture Decision Records:
 
@@ -98,6 +102,9 @@ The `docs/architecture/adrs/` directory contains Architecture Decision Records:
 | ADR-011 | The ledger side is a closed two-value enumeration: `ASST` (asset) and `LIAB` (liability). Not extensible without a Nucleus deployment. Supersedes provisional examples (`LEND`, `SAVE`, `MORT`) in earlier documents. |
 | ADR-012 | Package structure follows bounded context boundaries; flat compound names (`accountfeatures`, not `account.features`); acyclic dependency graph with `parameters` as the foundational package. |
 | ADR-013 | Exception types used to produce HTTP error responses are defined in the root `iterator.nucleus` package. Sub-packages throw root-defined exceptions. `ErrorHandler` is the single `@ControllerAdvice`. `NucleusValidationException` is the standard mechanism for structured validation failures. |
+| ADR-014 | Idempotency keys are scoped to (operation ID, idempotency key) only — not to any resource dimension (classification code, account, etc.) — and do not expire. A recognised key returns the original stored response unconditionally. |
+| ADR-015 | Idempotent response bodies are serialised to JSON text for persistence and deserialised on retrieval. Breaking changes to serialised response types require a migration strategy before deployment. |
+| ADR-016 | The `idempotency` package is a foundational cross-cutting context: it depends on nothing within the Nucleus bounded context graph, enforced by `BoundedContextDependencyTest`. All bounded contexts may consume it freely; it may never depend on any of them without superseding this ADR. |
 
 Persona and role documents in `docs/personas/` and `docs/roles/` define the actors in
 the system and the modes in which Claude Code operates in this repository.
