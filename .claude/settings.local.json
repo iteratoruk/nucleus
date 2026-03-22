@@ -6,7 +6,9 @@
       "Bash(./gradlew detekt:*)",
       "WebSearch",
       "WebFetch(domain:docs.confluent.io)",
-      "WebFetch(domain:developer.confluent.io)"
+      "WebFetch(domain:developer.confluent.io)",
+      "Bash(git add:*)",
+      "Bash(./gradlew compileTestKotlin)"
     ]
   }
 }
