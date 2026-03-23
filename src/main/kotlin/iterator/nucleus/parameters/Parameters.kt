@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 
+const val ABSENCE_MARKER = "__NUCLEUS_EXPLICIT_ABSENCE__"
+
 enum class LedgerSide {
   ASST,
   LIAB,
@@ -140,15 +142,16 @@ class ParameterNodeService(
   ): Map<String, String> {
     val nodeCodes = listOf(code) + code.ancestorCodes.reversed()
     val resolved = mutableMapOf<String, String>()
+    val terminatedKeys = mutableSetOf<String>()
     for (nodeCode in nodeCodes) {
       val node = parameterNodeRepository.findByClassificationCode(nodeCode.value) ?: continue
       parameterValueRepository
         .findByParameterNodeAndEffectiveDatetimeLessThanEqualAndSupersededAtIsNull(node, asAt)
         .groupBy { it.parameterKey }
         .forEach { (key, entries) ->
-          if (key !in resolved) {
-            resolved[key] = entries.maxBy { it.effectiveDatetime }.value
-          }
+          if (key in resolved || key in terminatedKeys) return@forEach
+          val value = entries.maxBy { it.effectiveDatetime }.value
+          if (value == ABSENCE_MARKER) terminatedKeys += key else resolved[key] = value
         }
     }
     return resolved

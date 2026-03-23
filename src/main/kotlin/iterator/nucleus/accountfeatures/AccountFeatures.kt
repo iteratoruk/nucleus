@@ -9,6 +9,7 @@ import iterator.nucleus.NucleusViolation
 import iterator.nucleus.Serialization
 import iterator.nucleus.Uris
 import iterator.nucleus.idempotency.IdempotencyService
+import iterator.nucleus.parameters.ABSENCE_MARKER
 import iterator.nucleus.parameters.ClassificationCode
 import iterator.nucleus.parameters.LedgerSide
 import iterator.nucleus.parameters.ParameterNodeService
@@ -120,6 +121,7 @@ private const val PUT_ACCOUNT_FEATURES = "PUT_ACCOUNT_FEATURES"
 data class PutAccountFeaturesRequest(
   val effectiveDatetime: Instant,
   val features: FeatureConfiguration,
+  val explicitAbsences: Map<String, List<String>> = emptyMap(),
 )
 
 data class AccountFeaturesResponse(
@@ -217,10 +219,15 @@ class AccountFeaturesService(
         propertyConstraintViolations(request.features) +
         opennessViolations(request.features, request.effectiveDatetime)
     if (violations.isNotEmpty()) throw NucleusValidationException(violations)
+    val absenceValues =
+      request.explicitAbsences
+        .flatMap { (featureName, propertyNames) ->
+          propertyNames.map { propertyName -> "$featureName.$propertyName" to ABSENCE_MARKER }
+        }.toMap()
     parameterNodeService.write(
       code,
       request.effectiveDatetime,
-      featureCatalogueConverter.toParameterValues(request.features),
+      featureCatalogueConverter.toParameterValues(request.features) + absenceValues,
     )
     val response = AccountFeaturesResponse(features = request.features)
     idempotencyService.record(

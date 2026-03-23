@@ -734,6 +734,144 @@ class AccountFeaturesApiTest
       assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
     }
 
+    @Test
+    fun `a feature set to explicitly absent at a child node is not inherited from the parent`() {
+      mvc
+        .put("/api/v1/account-features/LIAB") {
+          withHeaders("cameron", "NUC8-S1-parent-setup")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-01-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS") {
+          withHeaders("cameron", "NUC8-S1-absence-setup")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-01-01T00:00:00Z",
+              "features": {},
+              "explicitAbsences": {
+                "liabilityInterest": ["interestRate"]
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mvc
+        .get("/api/v1/account-features/LIAB_INAS") {
+          withHeaders("cameron")
+          param("asAt", "2026-04-01T00:00:00Z")
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.interestRate") { doesNotExist() }
+        }
+    }
+
+    @Test
+    fun `a feature not configured at a child node inherits from the parent`() {
+      mvc
+        .put("/api/v1/account-features/LIAB") {
+          withHeaders("cameron", "NUC8-S2-parent-setup")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-01-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      givenNodeExists("LIAB_INAS")
+
+      mvc
+        .get("/api/v1/account-features/LIAB_INAS") {
+          withHeaders("cameron")
+          param("asAt", "2026-04-01T00:00:00Z")
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0350000") }
+        }
+    }
+
+    @Test
+    fun `an explicit absence marker is superseded by a concrete value`() {
+      mvc
+        .put("/api/v1/account-features/LIAB") {
+          withHeaders("cameron", "NUC8-S3-parent-setup")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-01-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS") {
+          withHeaders("cameron", "NUC8-S3-absence-setup")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-01-01T00:00:00Z",
+              "features": {},
+              "explicitAbsences": {
+                "liabilityInterest": ["interestRate"]
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS") {
+          withHeaders("cameron", "NUC8-S3-supersession")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-01-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "interestRate": "0.0500000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mvc
+        .get("/api/v1/account-features/LIAB_INAS") {
+          withHeaders("cameron")
+          param("asAt", "2026-04-01T00:00:00Z")
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0500000") }
+        }
+    }
+
     private fun givenNodeExists(classificationCode: String) {
       mvc
         .put("/api/v1/account-features/$classificationCode") {
