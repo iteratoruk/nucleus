@@ -584,6 +584,156 @@ class AccountFeaturesApiTest
       }
     }
 
+    @Test
+    fun `a new submission with an effective datetime in a closed period is rejected`() {
+      processingBoundaryClosureRepository.save(
+        ProcessingBoundaryClosure(
+          boundary = ProcessingBoundary.BUSINESS_DAY_CLOSE,
+          closureTimestamp = Instant.parse("2026-02-28T23:59:59Z"),
+        ),
+      )
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "nuc-007-scenario-1")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-02-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isBadRequest() }
+          jsonPath("$.violations") { value(hasSize<Any>(1)) }
+          jsonPath("$.violations[0].subject") { value("liabilityInterest.interestRate") }
+          jsonPath("$.violations[0].message") {
+            value("business date 2026-02-01 is closed under BUSINESS_DAY_CLOSE boundary")
+          }
+        }
+
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
+    }
+
+    @Test
+    fun `a supersession attempt for a closed-period effective datetime is rejected`() {
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "nuc-007-scenario-2-setup")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-02-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      processingBoundaryClosureRepository.save(
+        ProcessingBoundaryClosure(
+          boundary = ProcessingBoundary.BUSINESS_DAY_CLOSE,
+          closureTimestamp = Instant.parse("2026-02-28T23:59:59Z"),
+        ),
+      )
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "nuc-007-scenario-2")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-02-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "interestRate": "0.0400000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isBadRequest() }
+          jsonPath("$.violations") { value(hasSize<Any>(1)) }
+          jsonPath("$.violations[0].subject") { value("liabilityInterest.interestRate") }
+          jsonPath("$.violations[0].message") {
+            value("business date 2026-02-01 is closed under BUSINESS_DAY_CLOSE boundary")
+          }
+        }
+
+      mvc
+        .get("/api/v1/account-features/LIAB_INAS_2026") { param("asAt", "2026-02-01T00:00:00Z") }
+        .andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0350000") }
+        }
+
+      assertThat(
+        mockAuditService
+          .getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)
+          .filterIsInstance<ParameterValueSetEvent>()
+          .filter {
+            it.classificationCode == "LIAB_INAS_2026" &&
+              it.effectiveDatetime == Instant.parse("2026-02-01T00:00:00Z")
+          },
+      ).hasSize(1) // setup write only; rejected write must not appear
+    }
+
+    @Test
+    fun `a mixed submission where one property fails openness validation is rejected in full`() {
+      processingBoundaryClosureRepository.save(
+        ProcessingBoundaryClosure(
+          boundary = ProcessingBoundary.BUSINESS_DAY_CLOSE,
+          closureTimestamp = Instant.parse("2026-02-28T23:59:59Z"),
+        ),
+      )
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron", "nuc-007-scenario-3")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-02-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true,
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isBadRequest() }
+          jsonPath("$.violations") { value(hasSize<Any>(1)) }
+          jsonPath("$.violations[0].subject") { value("liabilityInterest.interestRate") }
+          jsonPath("$.violations[0].message") {
+            value("business date 2026-02-01 is closed under BUSINESS_DAY_CLOSE boundary")
+          }
+        }
+
+      mvc
+        .get("/api/v1/account-features/LIAB_INAS_2026") {
+          withHeaders("cameron")
+          param("asAt", "2026-02-01T00:00:00Z")
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest") { doesNotExist() }
+        }
+
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
+    }
+
     private fun givenNodeExists(classificationCode: String) {
       mvc
         .put("/api/v1/account-features/$classificationCode") {

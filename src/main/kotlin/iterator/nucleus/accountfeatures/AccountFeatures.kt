@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.ZoneOffset
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
@@ -214,7 +215,7 @@ class AccountFeaturesService(
     val violations =
       ledgerSideApplicabilityViolations(code.ledgerSide, request.features) +
         propertyConstraintViolations(request.features) +
-        opennessViolations(request.features)
+        opennessViolations(request.features, request.effectiveDatetime)
     if (violations.isNotEmpty()) throw NucleusValidationException(violations)
     parameterNodeService.write(
       code,
@@ -231,16 +232,29 @@ class AccountFeaturesService(
     return response
   }
 
-  private fun opennessViolations(features: FeatureConfiguration): List<NucleusViolation> =
+  private fun opennessViolations(
+    features: FeatureConfiguration,
+    effectiveDatetime: Instant,
+  ): List<NucleusViolation> =
     features.presentFeatures().flatMap { feature ->
+      val featureName = featureNameFor(feature::class)
       feature::class.memberProperties.mapNotNull { property ->
         val annotation = property.findAnnotation<BoundaryGoverned>() ?: return@mapNotNull null
         if (property.getter.call(feature) == null) return@mapNotNull null
-        processingBoundaryClosureRepository.findTopByBoundaryOrderByClosureTimestampDesc(
-          annotation.boundary,
-        ) ?: return@mapNotNull null
-        // closure exists: rejection comparison driven by NUC-007
-        null
+        val closure =
+          processingBoundaryClosureRepository.findTopByBoundaryOrderByClosureTimestampDesc(
+            annotation.boundary,
+          ) ?: return@mapNotNull null
+        val businessDate = effectiveDatetime.atZone(ZoneOffset.UTC).toLocalDate()
+        val closureDate = closure.closureTimestamp.atZone(ZoneOffset.UTC).toLocalDate()
+        if (businessDate <= closureDate) {
+          NucleusViolation(
+            "$featureName.${property.name}",
+            "business date $businessDate is closed under ${annotation.boundary} boundary",
+          )
+        } else {
+          null
+        }
       }
     }
 
