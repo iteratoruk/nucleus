@@ -35,11 +35,11 @@ And the rejection identifies liabilityInterest.interestRate as the property whos
 And the applicable value of liabilityInterest.interestRate for classification code "LIAB_INAS_2026" at effective datetime 2026-02-01T00:00:00Z remains "0.0350000"
 ```
 
-### Scenario: A mixed submission where one property's effective datetime is in a closed period is rejected in full
+### Scenario: A mixed submission where one property fails openness validation is rejected in full
 
 ```gherkin
 Given the BUSINESS_DAY_CLOSE boundary has a most recent closure timestamp of 2026-02-28T23:59:59Z
-When Cameron submits account feature configuration for classification code "LIAB_INAS_2026" with liabilityInterest.interestRate set to "0.0350000" at effective datetime 2026-02-01T00:00:00Z and liabilityInterest.enabled set to true at effective datetime 2026-04-01T00:00:00Z
+When Cameron submits account feature configuration for classification code "LIAB_INAS_2026" with liabilityInterest.interestRate set to "0.0350000" and liabilityInterest.enabled set to true at effective datetime 2026-02-01T00:00:00Z
 Then the submission is rejected
 And the rejection identifies liabilityInterest.interestRate as the property whose business date 2026-02-01 is closed under the BUSINESS_DAY_CLOSE boundary
 And the rejection does not identify liabilityInterest.enabled as a violation
