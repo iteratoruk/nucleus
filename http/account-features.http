@@ -1,0 +1,56 @@
+### GET account features – liability-side classification code (resolved at current wall-clock time)
+GET {{baseUrl}}/api/v1/account-features/LIAB_INAS_2026_Q1Q2
+X-Client-ID: {{clientId}}
+
+### GET account features – resolved as at a specific point in time
+GET {{baseUrl}}/api/v1/account-features/LIAB_INAS_2026_Q1Q2?asAt=2026-01-15T12:00:00Z
+X-Client-ID: {{clientId}}
+
+### PUT account features – configure liability interest on a liability-side node
+PUT {{baseUrl}}/api/v1/account-features/LIAB_INAS_2026_Q1Q2
+X-Client-ID: {{clientId}}
+Idempotency-Key: {{$uuid}}
+Content-Type: application/json
+
+{
+  "effectiveDatetime": "2026-01-02T00:00:00Z",
+  "features": {
+    "liabilityInterest": {
+      "enabled": true,
+      "interestRate": 0.0250000
+    }
+  }
+}
+
+### PUT account features – configure asset interest on an asset-side node
+PUT {{baseUrl}}/api/v1/account-features/ASST_BTRM_2026_Q1Q2
+X-Client-ID: {{clientId}}
+Idempotency-Key: {{$uuid}}
+Content-Type: application/json
+
+{
+  "effectiveDatetime": "2026-01-02T00:00:00Z",
+  "features": {
+    "assetInterest": {
+      "enabled": true,
+      "interestRate": 0.0550000
+    }
+  }
+}
+
+### PUT account features – suppress an inherited property via explicit absence
+# explicitAbsences terminates inheritance resolution for the named properties without
+# providing a replacement value. The key is the feature name; the list contains the
+# property names to suppress.
+PUT {{baseUrl}}/api/v1/account-features/LIAB_INAS_2026_Q1Q2
+X-Client-ID: {{clientId}}
+Idempotency-Key: {{$uuid}}
+Content-Type: application/json
+
+{
+  "effectiveDatetime": "2026-01-02T00:00:00Z",
+  "features": {},
+  "explicitAbsences": {
+    "liabilityInterest": ["interestRate"]
+  }
+}
