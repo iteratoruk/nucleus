@@ -8,7 +8,8 @@
       "WebFetch(domain:docs.confluent.io)",
       "WebFetch(domain:developer.confluent.io)",
       "Bash(git add:*)",
-      "Bash(./gradlew compileTestKotlin)"
+      "Bash(./gradlew compileTestKotlin)",
+      "Bash(./gradlew dependencies:*)"
     ]
   }
 }
