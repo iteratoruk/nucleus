@@ -15,7 +15,14 @@
       "Bash(./gradlew wrapper:*)",
       "Bash(./gradlew build:*)",
       "Bash(./gradlew --version 2>&1)",
-      "Bash(./gradlew spotlessCheck)"
+      "Bash(./gradlew spotlessCheck)",
+      "WebFetch(domain:detekt.dev)",
+      "Bash(curl -s \"https://central.sonatype.com/api/v1/browse?namespace=io.gitlab.arturbosch.detekt&name=detekt-gradle-plugin&sortField=version&sortDirection=DESC&size=10\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(c[''''version'''']\\) for c in d.get\\(''''components'''', []\\)]\")",
+      "Bash(curl -s \"https://api.github.com/repos/detekt/detekt/contents/build-logic?ref=v2.0.0-alpha.2\")",
+      "Bash(python3 -c \"import json,sys; [print\\(f[''''name'''']\\) for f in json.load\\(sys.stdin\\)]\")",
+      "Bash(curl -sI \"https://repo1.maven.org/maven2/io/gitlab/arturbosch/detekt/detekt-gradle-plugin/2.0.0-alpha.2/\")",
+      "Bash(curl -s \"https://repo1.maven.org/maven2/io/gitlab/arturbosch/detekt/detekt-gradle-plugin/\")"
     ]
   }
 }
