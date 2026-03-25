@@ -140,6 +140,12 @@ that point the task can proceed unmodified. Monitor https://repo1.maven.org/mave
 **Current build.gradle.kts state:** Restored to original versions (`kotlin 2.0.21`,
 `detekt 1.23.8`). No net change has been made to the build file.
 
+**Decision: defer Kotlin upgrade until detekt 2.0.x reaches a stable public release.**
+Spring Boot 4.0 was also deferred as a consequence: it requires Kotlin ≥ 2.2, which
+cannot be met while the detekt constraint remains unresolved. Both upgrades should be
+revisited together when detekt 2.0.x is publicly available. The current stack
+(Kotlin 2.0.21, Spring Boot 3.5, detekt 1.23.8) is stable and will remain so.
+
 ---
 
 ### F-002 — No configurable `kotlinVersion` property in detekt 2.0.0-alpha.2
