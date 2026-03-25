@@ -162,6 +162,19 @@ private fun classificationCodeViolation(code: String): NucleusViolation? {
   }
 }
 
+private fun ledgerSidePrefixViolation(code: String): NucleusViolation? {
+  val prefix = code.substringBefore("_")
+  return if (LedgerSide.entries.none { it.name == prefix }) {
+    NucleusViolation(
+      code,
+      "Invalid classification code '$code': '$prefix' is not a recognised ledger-side prefix; " +
+        "the first segment must be one of ${LedgerSide.entries.joinToString()}",
+    )
+  } else {
+    null
+  }
+}
+
 private val featureLedgerSideApplicability: Map<String, Set<LedgerSide>> =
   mapOf(
     "assetInterest" to setOf(LedgerSide.ASST),
@@ -211,7 +224,9 @@ class AccountFeaturesService(
         return it
       }
 
-    val codeViolation = classificationCodeViolation(classificationCode)
+    val codeViolation =
+      classificationCodeViolation(classificationCode)
+        ?: ledgerSidePrefixViolation(classificationCode)
     if (codeViolation != null) throw NucleusValidationException(listOf(codeViolation))
     val code = ClassificationCode(classificationCode)
     val violations =
@@ -269,7 +284,9 @@ class AccountFeaturesService(
     classificationCode: String,
     asAt: Instant,
   ): AccountFeaturesResponse {
-    val codeViolation = classificationCodeViolation(classificationCode)
+    val codeViolation =
+      classificationCodeViolation(classificationCode)
+        ?: ledgerSidePrefixViolation(classificationCode)
     if (codeViolation != null) throw NucleusValidationException(listOf(codeViolation))
     val code = ClassificationCode(classificationCode)
     return AccountFeaturesResponse(

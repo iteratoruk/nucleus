@@ -226,6 +226,33 @@ class AccountFeaturesApiTest
     }
 
     @Test
+    fun `a submission targeting a classification code with an unrecognised ledger-side prefix is rejected`() {
+      mvc
+        .put("/api/v1/account-features/XXXX_INAS_2026") {
+          withHeaders("cameron", "NUC9-T1")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-04-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": { "enabled": true }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isBadRequest() }
+          jsonPath("$.code") { value("INVALID_FEATURE_CONFIGURATION") }
+          jsonPath("$.violations") { value(hasSize<Any>(1)) }
+          jsonPath("$.violations[0].subject") { value(containsString("XXXX_INAS_2026")) }
+          jsonPath("$.violations[0].message") { value(containsString("XXXX")) }
+          jsonPath("$.violations[0].message") { value(containsString("ledger")) }
+        }
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.NODE_CREATED)).isEmpty()
+      assertThat(mockAuditService.getAuditEvents(NucleusAuditEventType.PARAMETER_VALUE_SET)).isEmpty()
+    }
+
+    @Test
     fun `a submission targeting a malformed classification code is rejected`() {
       mvc
         .put("/api/v1/account-features/LIAB-INAS") {
