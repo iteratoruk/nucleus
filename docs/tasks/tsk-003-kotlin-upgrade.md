@@ -99,7 +99,104 @@ attention to:
 
 ## Findings
 
-[Populated during execution — record every new detekt violation introduced by the
-upgrade and its resolution, every forced dependency change, every K2 compiler
-behavioural change encountered, and the detekt internal Kotlin version configuration
-applied.]
+### F-001 — detekt 2.0.0-alpha.2 is not published to any accessible public Maven repository (BLOCKER)
+
+**Status: Blocker. Task cannot be completed as specified until resolved.**
+
+The task document specifies upgrading detekt to `2.0.0-alpha.2`, the minimum version
+with Kotlin 2.3.x support. This version was released as a GitHub Release on 2026-01-27
+(https://github.com/detekt/detekt/releases/tag/v2.0.0-alpha.2) but has not been
+published to Maven Central, the Gradle Plugin Portal, or any other publicly accessible
+Maven repository. All `2.0.0-alpha.x` versions (`alpha.0`, `alpha.1`, `alpha.2`) are
+absent from both repositories.
+
+Investigation steps performed:
+- Maven Central (`repo1.maven.org`): 404 for all `2.0.0-alpha.x` coordinates. Latest
+  available version is `1.23.8`.
+- Gradle Plugin Portal (`plugins.gradle.org`): shows `1.23.8` as latest. No `2.x`
+  versions listed.
+- Sonatype OSSRH staging: not accessible externally. The detekt build configuration
+  targets `ossrh-staging-api.central.sonatype.com` via nexus-publish, but the
+  artifacts have not been promoted to Central.
+- GitHub Packages: 401 (authentication required). Even if accessible, configuring
+  GitHub Packages as a plugin repository requires a personal access token, which is
+  not appropriate for a project build.
+
+**Consequence:** When the Kotlin version is set to `2.3.20` with detekt `1.23.8` in
+place, the `:detekt` task fails with:
+
+```
+detekt was compiled with Kotlin 2.0.21 but is currently running with 2.3.20.
+This is not supported.
+```
+
+This is an enforced version check inside detekt — it is not possible to work around
+it by configuration. The Kotlin upgrade and the detekt upgrade are inseparable.
+
+**Candidate resolution:** The task must remain parked until detekt `2.0.0-alpha.2` (or
+a later `2.0.0` release) is published to Maven Central or the Gradle Plugin Portal. At
+that point the task can proceed unmodified. Monitor https://repo1.maven.org/maven2/io/gitlab/arturbosch/detekt/detekt-gradle-plugin/ for the appearance of a `2.x` version.
+
+**Current build.gradle.kts state:** Restored to original versions (`kotlin 2.0.21`,
+`detekt 1.23.8`). No net change has been made to the build file.
+
+---
+
+### F-002 — No configurable `kotlinVersion` property in detekt 2.0.0-alpha.2
+
+**Status: Informational. Corrects an assumption in the task document.**
+
+The task document states that detekt must be "configured to use Kotlin `2.3.0`
+internally" and that the configuration is "likely a `detekt { kotlinVersion = \"2.3.0\" }` block or equivalent, but confirm from the documentation."
+
+The actual detekt `2.0.0-alpha.2` release notes and the `detekt {}` DSL documentation
+confirm that **no such configuration property exists**. The Kotlin compiler version
+used by detekt is fixed to the version it was compiled against (Kotlin `2.3.0` for
+`2.0.0-alpha.2`) and is not user-configurable. The compatibility table at
+https://detekt.dev/docs/introduction/compatibility expresses this relationship as a
+version-pairing constraint, not a configuration option.
+
+When F-001 is resolved and the detekt upgrade proceeds, no detekt configuration block
+for a Kotlin version is required or possible.
+
+---
+
+### F-003 — Kotlin 2.2.0 changes JVM default method generation for interfaces
+
+**Status: Informational. To be assessed during the actual upgrade execution.**
+
+Kotlin 2.2.0 changes the default JVM compilation mode for interfaces: interface
+functions now compile to JVM default methods by default (with compatibility bridges),
+replacing the previous `DefaultImpls` class-based approach. This is a binary
+compatibility change. For this codebase the primary risk is in Spring proxy behaviour
+for Kotlin interfaces. This requires explicit testing after the upgrade runs. No
+action needed until F-001 is resolved.
+
+---
+
+### F-004 — K2 kapt became the default in Kotlin 2.2.20
+
+**Status: Informational. Lower risk for this project.**
+
+In Kotlin 2.2.20, K2 kapt became the default annotation processor. However, this
+project does not use kapt — it uses the standard Java `annotationProcessor`
+configuration (solely for `spring-boot-configuration-processor`). This change has no
+direct effect on this build. Noted for completeness.
+
+---
+
+### F-005 — detekt 2.0.0-alpha.2 introduces breaking rule renames
+
+**Status: Informational. To be assessed during the actual upgrade execution.**
+
+The `2.0.0-alpha.2` changelog records several breaking rule-set renames:
+- `documentation` → `comments`
+- `empty` → `emptyblocks`
+- `bugs` → `potentialbugs`
+- `UnnecessaryAnnotationUseSiteTarget` rule removed
+- `CommentOverPrivateMethod` → `DocumentationOverPrivateMethod`
+- `ForbiddenImport` configuration options changed
+
+If the project has a `detekt.yml` configuration file that references any of these
+rule-set or rule names, those references will need updating. This will be addressed
+when F-001 is resolved and the upgrade proceeds.
