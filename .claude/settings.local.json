@@ -9,7 +9,13 @@
       "WebFetch(domain:developer.confluent.io)",
       "Bash(git add:*)",
       "Bash(./gradlew compileTestKotlin)",
-      "Bash(./gradlew dependencies:*)"
+      "Bash(./gradlew dependencies:*)",
+      "WebFetch(domain:docs.gradle.org)",
+      "WebFetch(domain:docs.openrewrite.org)",
+      "Bash(./gradlew wrapper:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(./gradlew --version 2>&1)",
+      "Bash(./gradlew spotlessCheck)"
     ]
   }
 }
