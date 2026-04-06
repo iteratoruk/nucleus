@@ -1,7 +1,7 @@
 # RFP-002: Catalogue metadata is partially reflection-driven and partially hardcoded
 
 **Date:** 2026-03-25
-**Status:** Proposed
+**Status:** Accepted → SPK-001
 **Bounded context:** Account Feature Catalogue
 **Produced by:** Code review session on 2026-03-25
 
@@ -188,4 +188,5 @@ decision to defer should be recorded explicitly.
 
 ## Decision
 
-_Pending review._
+Accepted. SPK-001 has been opened to determine which approach to catalogue metadata
+consistency is proportionate before a task is written.
