@@ -355,6 +355,109 @@ NUC-[NNN].
 
 ---
 
+### Task Authoring Session
+
+Use when: writing new tasks or refining existing tasks.
+
+```
+@docs/roles/work-unit-author.md
+@docs/tasks/TSK-000-task-template.md
+
+---
+
+We are opening a work unit authoring session to produce a task document.
+
+## The work to be documented
+
+[Describe the task in your own words: what needs to be done, what prompted it,
+and what you already know about its scope. Include any findings, technical notes,
+or research that is already available. Be as specific as you can — the more
+context provided here, the more precisely the scope boundary can be drawn.]
+
+## Research needed before scoping
+
+[Optional. List anything that needs to be looked up before the scope boundary can
+be written precisely: release notes for a version upgrade, compatibility tables,
+changelog entries, documentation for a tool or library involved. If you have
+already done this research, summarise the relevant findings here instead.
+
+If no research is needed, delete this section.]
+
+## Known constraints
+
+[Optional. List anything that is already known to be in scope or out of scope,
+any dependencies on prior tasks or stories, and any risks that should be
+pre-populated in the Findings section.
+
+If none, delete this section.]
+
+---
+
+Before writing the document:
+1. Confirm the next available TSK identifier by checking `docs/tasks/`.
+2. Conduct any research listed above and report findings before drafting.
+3. If the work does not warrant a formal task document, say so and explain why.
+
+Produce the completed task document and save it to
+`docs/tasks/TSK-NNN-[short-title].md`.
+```
+
+### Spike Authoring Session
+
+Use when: writing new spikes or refining existing spikes.
+
+```
+@docs/roles/work-unit-author.md
+@docs/spikes/SPK-000-spike-template.md
+
+---
+
+We are opening a work unit authoring session to produce a spike document.
+
+## The question to be investigated
+
+[State the aporia as precisely as you can: what is genuinely unknown, and why
+is the team unable to proceed confidently without answering it? A good question
+is specific enough that, when the spike concludes, it will be unambiguous whether
+it has been answered.]
+
+## What is blocked
+
+[Which story, ADR, architectural decision, or task cannot proceed until this
+question is answered? A spike without a dependency is a spike without urgency.]
+
+## What is already known
+
+[Summarise any prior investigation, constraints already established, or options
+already ruled out. This prevents the spike from re-covering ground already
+covered and helps bound the investigation.]
+
+## Initial thoughts on approach
+
+[Optional. If you already have a view on how the investigation should proceed —
+what to try, what to compare, what documentation to read — describe it here.
+The spike document will refine this, but having a starting point helps scope
+the time-box.]
+
+## Proposed time-box
+
+[Your initial estimate of how long the investigation should take, and the
+condition under which an extension would be appropriate.]
+
+---
+
+Before writing the document:
+1. Confirm the next available SPK identifier by checking `docs/spikes/`.
+2. If the question as stated cannot be answered definitively by a time-boxed
+   investigation — for example, because it is actually a domain modelling question
+   or an open requirements question — say so before producing the document.
+3. If the work does not warrant a formal spike document (the question can be
+   answered in minutes by reading documentation), say so and explain why.
+
+Produce the completed spike document and save it to
+`docs/spikes/SPK-NNN-[short-title].md`.
+```
+
 ### TDD Implementation Session
 
 Use when: implementing a specific user story that has no open questions and whose

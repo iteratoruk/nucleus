@@ -130,7 +130,7 @@ the refactoring unprotected.
 ## Output: Refactoring Proposal
 
 Findings that meet the threshold for a proposal are written as `RFP-NNN` documents
-following the template in `docs/tasks/RFP-000-refactoring-proposal-template.md`.
+following the template in `docs/rfps/RFP-000-refactoring-proposal-template.md`.
 
 Save proposals to `docs/rfps/RFP-NNN-[short-title].md`.
 
