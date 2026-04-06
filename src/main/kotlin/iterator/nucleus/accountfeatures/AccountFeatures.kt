@@ -224,11 +224,7 @@ class AccountFeaturesService(
         return it
       }
 
-    val codeViolation =
-      classificationCodeViolation(classificationCode)
-        ?: ledgerSidePrefixViolation(classificationCode)
-    if (codeViolation != null) throw NucleusValidationException(listOf(codeViolation))
-    val code = ClassificationCode(classificationCode)
+    val code = validateAndParseClassificationCode(classificationCode)
     val violations =
       ledgerSideApplicabilityViolations(code.ledgerSide, request.features) +
         propertyConstraintViolations(request.features) +
@@ -290,16 +286,18 @@ class AccountFeaturesService(
     classificationCode: String,
     asAt: Instant,
   ): AccountFeaturesResponse {
-    val codeViolation =
-      classificationCodeViolation(classificationCode)
-        ?: ledgerSidePrefixViolation(classificationCode)
-    if (codeViolation != null) throw NucleusValidationException(listOf(codeViolation))
-    val code = ClassificationCode(classificationCode)
+    val code = validateAndParseClassificationCode(classificationCode)
     return AccountFeaturesResponse(
       features =
         featureCatalogueConverter.toFeatureConfiguration(
           parameterNodeService.resolve(code, asAt),
         ),
     )
+  }
+
+  private fun validateAndParseClassificationCode(code: String): ClassificationCode {
+    val violation = classificationCodeViolation(code) ?: ledgerSidePrefixViolation(code)
+    if (violation != null) throw NucleusValidationException(listOf(violation))
+    return ClassificationCode(code)
   }
 }

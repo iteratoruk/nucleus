@@ -1,6 +1,6 @@
 # TSK-005: Extract validateAndParseClassificationCode on AccountFeaturesService
 
-**Status:** In Progress
+**Status:** Done
 
 ---
 
@@ -66,4 +66,7 @@ continue to pass — in particular:
 
 ## Findings
 
-None anticipated. This is a small, mechanical extraction with no observable behaviour change.
+One minor documentation inaccuracy: the task document states the `get()` duplicate block is at
+lines 287–291. The actual location was 293–297, because the `opennessViolations` private method
+(added after the task was written) sits between `put()` and `get()`. The logic was identical to
+the task description; no implementation consequence.
