@@ -1,6 +1,6 @@
 # SPK-001: Which approach to uniform catalogue metadata is proportionate at pre-v1 catalogue size?
 
-**Status:** Open
+**Status:** Closed — deferred with trigger condition
 
 ---
 
@@ -33,7 +33,7 @@ distinct from Approach A and Approach B — that requires non-trivial prototypin
 one additional session may be used. The extension requires an explicit statement of the
 third approach and why it warrants prototyping before it is approved.
 
-**Time used:** —
+**Time used:** One session (within initial allocation).
 
 ## Approach
 
@@ -80,4 +80,42 @@ and closes the spike without a follow-on task.
 
 ## Result
 
-_Populated at the end of the spike._
+**Finding:** The RFP-002 description matches the live code exactly. The inconsistency is
+confirmed: `toFeatureConfiguration()`, `featureLedgerSideApplicability`, and
+`propertyConstraintViolations()` each require manual per-feature updates; the write path
+and openness validation do not.
+
+**Approach A prototype:** Implemented and confirmed working. All 26 tests pass (25 existing
+plus one regression test exercising a stub third feature end-to-end). Net production code
+change: approximately +32 lines. The approach is technically sound and introduces no new
+external dependencies. The key design: `FeatureCatalogueRegistry` with an explicit feature
+class list; `toFeatureConfiguration()` driven by `primaryConstructor.callBy()`; `@MaxDecimalPlaces`
+annotation driving `propertyConstraintViolations()`. The explicit list moves per-feature
+registration from 4-5 dispersed places to 1 place, but does not eliminate it. `presentFeatures()`
+remains manually maintained.
+
+**Approach B assessment:** Not viable. The FeatureConfiguration constructor problem is
+replaced with a Jackson polymorphism deserialization problem of equivalent complexity.
+Type safety is degraded. Not recommended.
+
+**Proportionality:** At 2 features the abstraction is underwater (~32 lines added, ~20
+lines of hardcoded maintenance eliminated, net +12). The silent drop risk is mitigated by
+TDD discipline. The balance shifts at the third feature addition.
+
+**Additional finding — Approach C (JSR 303):** `spring-boot-starter-validation` is already
+on the classpath. `@Digits` from JSR 303 could replace the custom `@MaxDecimalPlaces`
+annotation within the Approach A implementation. Full JSR 303 integration (programmatic
+`Validator.validate()` + `ConstraintViolation` → `NucleusViolation` translation) is not
+proportionate at this stage: the pipeline split problem (ADR-020 exhaustive collection
+vs. `@Valid` early-exit behaviour) requires architectural changes beyond the scope of this
+finding. The `@BoundaryGoverned` replacement via a JSR 303 class-level constraint is
+feasible but not simpler than the current named function. The proportionate adoption:
+use `@Digits` as the property-level annotation within Approach A at the trigger condition.
+
+**Recommendation:** Deferral. Approach A (with `@Digits` in place of the custom
+`@MaxDecimalPlaces` annotation) to be applied as the first step of the task that adds the
+third catalogue feature. See
+`docs/spikes/SPK-001-catalogue-metadata-consistency-recommendation.md` for the full
+recommendation and the Approach A specification for the follow-on task. The prototype
+branch (`worktree-agent-a6585a0e`) is not to be merged; it serves as confirmed pre-work
+only.

@@ -109,6 +109,7 @@ The `docs/architecture/adrs/` directory contains Architecture Decision Records:
 | ADR-018 | `PROSPECTIVE_ONLY` openness category: effective datetime must be strictly after wall-clock time at write; applies to properties whose past-effective change would corrupt derived internal properties of already-open accounts. |
 | ADR-019 | Derived internal properties: values Nucleus calculates from feature properties at account opening and stores immutably in the Account context. The maturity date (from `fixedTerm.termPeriod`) is the first instance. Contributing properties must be `PROSPECTIVE_ONLY`. |
 | ADR-020 | Per-property openness validation: each property validated against its own openness category independently; any violation causes total submission rejection with per-property error attribution. |
+| ADR-021 | **Proposed.** JSR 303 / Hibernate Validator as the primary validation mechanism: constraint declarations co-located with request body types via standard annotations; custom `ConstraintValidator` for domain constraints requiring bean injection; `ErrorHandler` handles `MethodArgumentNotValidException`; `NucleusValidationException` retained for constraints requiring request context unavailable to body validators (e.g. ledger-side applicability). |
 
 Persona and role documents in `docs/personas/` and `docs/roles/` define the actors in
 the system and the modes in which Claude Code operates in this repository.
