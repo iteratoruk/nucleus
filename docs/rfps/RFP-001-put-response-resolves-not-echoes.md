@@ -1,7 +1,7 @@
 # RFP-001: PUT response must resolve node state, not echo submitted features
 
 **Date:** 2026-03-25
-**Status:** Proposed
+**Status:** Accepted → TSK-004
 **Bounded context:** Account Feature Catalogue
 **Produced by:** Code review session on 2026-03-25
 
@@ -139,4 +139,9 @@ verified to fail before the implementation change. `chore:` commit prefix.
 
 ## Decision
 
-_Pending review._
+Accepted. Implemented as TSK-004 on 2026-04-06. The response construction in
+`AccountFeaturesService.put()` was replaced with a `parameterNodeService.resolve()`
+call. Both prerequisite tests were confirmed red before the change and green after.
+All existing `AccountFeaturesApiTest` scenarios continue to pass. The ADR-015
+obligation for the breaking idempotency serialisation change is recorded in
+TSK-004 Finding 1.

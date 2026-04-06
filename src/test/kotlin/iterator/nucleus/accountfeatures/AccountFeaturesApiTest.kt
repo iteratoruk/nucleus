@@ -899,6 +899,104 @@ class AccountFeaturesApiTest
         }
     }
 
+    @Test
+    fun `PUT response includes values inherited from ancestor nodes`() {
+      mvc
+        .put("/api/v1/account-features/LIAB") {
+          withHeaders("test-configurer", "TSK004-RFP1-T1-parent")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-01-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS") {
+          withHeaders("test-configurer", "TSK004-RFP1-T1-child")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-01-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.enabled") { value(true) }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0350000") }
+        }
+    }
+
+    @Test
+    fun `PUT idempotent resubmission response includes values inherited from ancestor nodes`() {
+      mvc
+        .put("/api/v1/account-features/LIAB") {
+          withHeaders("test-configurer", "TSK004-RFP1-T2-parent")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-01-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "interestRate": "0.0350000"
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS") {
+          withHeaders("test-configurer", "TSK004-RFP1-T2-child")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-01-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect { status { isOk() } }
+
+      mvc
+        .put("/api/v1/account-features/LIAB_INAS") {
+          withHeaders("test-configurer", "TSK004-RFP1-T2-child")
+          contentType = MediaType.APPLICATION_JSON
+          content =
+            """
+            {
+              "effectiveDatetime": "2026-01-01T00:00:00Z",
+              "features": {
+                "liabilityInterest": {
+                  "enabled": true
+                }
+              }
+            }
+            """.trimIndent()
+        }.andExpect {
+          status { isOk() }
+          jsonPath("$.features.liabilityInterest.interestRate") { value("0.0350000") }
+        }
+    }
+
     private fun givenNodeExists(classificationCode: String) {
       mvc
         .put("/api/v1/account-features/$classificationCode") {

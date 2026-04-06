@@ -244,7 +244,13 @@ class AccountFeaturesService(
       request.effectiveDatetime,
       featureCatalogueConverter.toParameterValues(request.features) + absenceValues,
     )
-    val response = AccountFeaturesResponse(features = request.features)
+    val response =
+      AccountFeaturesResponse(
+        features =
+          featureCatalogueConverter.toFeatureConfiguration(
+            parameterNodeService.resolve(code, request.effectiveDatetime),
+          ),
+      )
     idempotencyService.record(
       operationId = PUT_ACCOUNT_FEATURES,
       idempotencyKey = idempotencyKey,
