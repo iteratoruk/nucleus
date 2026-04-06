@@ -1,7 +1,7 @@
 # RFP-003: Classification code validation is duplicated between put() and get()
 
 **Date:** 2026-03-25
-**Status:** Proposed
+**Status:** Accepted → TSK-005
 **Bounded context:** Account Feature Catalogue
 **Produced by:** Code review session on 2026-03-25
 
@@ -83,4 +83,5 @@ private method. `chore:` commit prefix.
 
 ## Decision
 
-_Pending review._
+Accepted. The proposed extraction is straightforward and the existing test coverage is
+sufficient to protect it. Task document: TSK-005.
