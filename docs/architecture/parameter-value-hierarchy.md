@@ -241,6 +241,11 @@ via the account features API. It does not react to events from other aggregates.
 
 ### Account Node Attachment
 
+> **Note (per ADR-027).** This aggregate has been reassigned to the Account bounded
+> context. The authoritative definition is in the Account domain model
+> (`docs/architecture/account.md`). The text below is retained here for historical
+> reference; the section will be removed in a future revision of this document.
+
 This aggregate governs the relationship between an account and its current parameter node,
 and the history of that relationship. It is distinct from the account aggregate itself
 (which belongs to the Account context) and from the Parameter Node aggregate.
@@ -520,20 +525,16 @@ account-features endpoints. See ADR-007.
 
 ## Open Questions
 
-**OQ-5: Account Node Attachment package placement.**
+**OQ-5: Account Node Attachment package placement. RESOLVED.**
 
-The Account Node Attachment aggregate is assigned to the Parameter Configuration bounded
-context in this document. During the NUC-001 implementation session, the question arose
-whether it belongs in `iterator.nucleus.parameters` (following this document's context
-assignment) or in a future `iterator.nucleus.accounts` package, on the grounds that it
-governs an account's relationship to a node and will be a close collaborator of the
-account lifecycle context.
-
-The current implementation places it in `parameters` per this document. This placement
-should be revisited in the architecture session that defines the Account context in code —
-before any account lifecycle work begins. If the conclusion is that Account Node
-Attachment belongs in `accounts`, this document and any implemented code must be updated
-together. The question is deferred, not resolved.
+The Account Node Attachment aggregate is reassigned from the Parameter Configuration
+bounded context to the Account bounded context, per ADR-027. The aggregate's identity
+is the account, its invariants are about account state and lifecycle, and its principal
+collaborators are within the Account context. The Parameter Configuration context retains
+ownership of parameter nodes and their values; it does not participate in attachment
+lifecycle. The provisional assignment in this document is superseded by ADR-027; this
+document and any implementation that placed the aggregate in `iterator.nucleus.parameters`
+must be updated to reflect the reassignment.
 
 ---
 

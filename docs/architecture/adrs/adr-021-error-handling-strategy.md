@@ -1,7 +1,7 @@
 # ADR-021: JSR 303 as the Primary Validation and Error Handling Strategy
 
 **Date:** 2026-04-06
-**Status:** Proposed
+**Status:** Accepted
 
 ## Context
 
@@ -148,10 +148,10 @@ handles domain constraints that require request context unavailable to a body va
   that are precisely attributed to the failing property rather than to the class as a
   whole.
 
-- The `Proposed` status of this ADR means the codebase currently contains manual
-  validation that will coexist with the new pattern during the transition period. Every
-  new feature added before the transition is complete adds to the migration cost. The
-  transition plan must be explicit.
+- The codebase currently contains manual validation that will coexist with the new
+  pattern during the transition period. The transition is deferred (see Adoption
+  below); during the deferral, new code should avoid deepening the manual pattern
+  unnecessarily but is not obliged to adopt JSR 303 prematurely.
 
 **Risks:**
 
@@ -177,6 +177,25 @@ handles domain constraints that require request context unavailable to a body va
   written, the Approach A specification must be revised: `@BoundaryGoverned` becomes a
   JSR 303 constraint annotation rather than a bespoke one, and `opennessViolations()` is
   replaced by the constraint validator rather than extended by the registry.
+
+## Adoption
+
+The decision is accepted, but the implementation is deferred. The current manual
+validation pattern continues in use until a complexity trigger condition makes the
+migration to JSR 303 worth the disruption. The trigger condition is the introduction
+of the account features and servicing work: those areas will add new properties and
+new constraint kinds at a volume where the dispersed-function cost of the manual
+pattern becomes acute. Migration to JSR 303 should accompany that work rather than
+precede it.
+
+Until the trigger condition is met, the principle of this ADR is settled and binding
+on any new validation work — new constraints added in the meantime should be evaluated
+against the JSR 303 pattern's expected shape and should not be designed in ways that
+would obstruct the eventual migration — but the wholesale conversion of existing
+validation code to JSR 303 is not required and should not be undertaken speculatively.
+When the account features and servicing work begins, the migration is undertaken
+alongside the new work and the manual pattern is retired together with the existing
+code paths it serves.
 
 ## Relationship to prior ADRs
 
