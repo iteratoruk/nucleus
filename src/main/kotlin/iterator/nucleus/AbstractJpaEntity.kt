@@ -7,6 +7,9 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.MappedSuperclass
 import jakarta.persistence.Version
+import jakarta.servlet.FilterChain
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import org.apache.commons.lang3.builder.CompareToBuilder
 import org.apache.commons.lang3.builder.EqualsBuilder
 import org.apache.commons.lang3.builder.HashCodeBuilder
@@ -22,6 +25,7 @@ import org.springframework.data.util.ProxyUtils
 import org.springframework.stereotype.Component
 import org.springframework.web.context.request.RequestAttributes
 import org.springframework.web.context.request.RequestContextHolder
+import org.springframework.web.filter.OncePerRequestFilter
 import java.time.Instant
 import java.util.Optional
 
@@ -77,6 +81,20 @@ class ClientIdAuditor : AuditorAware<String> {
         ?.getAttribute(NucleusHeaders.CLIENT_ID, RequestAttributes.SCOPE_REQUEST)
         ?.toString(),
     )
+}
+
+@Component
+class ClientIdRequestAttributeFilter : OncePerRequestFilter() {
+  override fun doFilterInternal(
+    request: HttpServletRequest,
+    response: HttpServletResponse,
+    chain: FilterChain,
+  ) {
+    request.getHeader(NucleusHeaders.CLIENT_ID)?.let {
+      request.setAttribute(NucleusHeaders.CLIENT_ID, it)
+    }
+    chain.doFilter(request, response)
+  }
 }
 
 @NoRepositoryBean interface AbstractJpaRepository<T : AbstractJpaEntity> : JpaRepository<T, Long>

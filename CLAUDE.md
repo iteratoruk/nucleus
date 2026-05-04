@@ -133,7 +133,8 @@ the system and the modes in which Claude Code operates in this repository.
 
 - Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat:`, `fix:`, `chore:`).
 - REST API paths are prefixed `/api/v1`.
-- The `X-Client-ID` request header is used as the JPA auditor (`createdBy`/`lastModifiedBy`).
+- The `X-Client-ID` request header is used as the JPA auditor (`createdBy`/`lastModifiedBy`). Reference it via `NucleusHeaders.CLIENT_ID` (defined in `App.kt`) rather than as a string literal.
+- Client-supplied idempotency keys are carried in the standard `Idempotency-Key` request header, referenced via `NucleusHeaders.IDEMPOTENCY_KEY` (defined in `App.kt`). Controllers bind it with `@RequestHeader(NucleusHeaders.IDEMPOTENCY_KEY)`; do not place idempotency keys in request bodies.
 - Scheduled task cron expressions use UTC.
 
 ### SQL and JPA mapping

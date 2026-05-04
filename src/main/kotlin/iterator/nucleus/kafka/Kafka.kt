@@ -1,6 +1,9 @@
 package iterator.nucleus.kafka
 
 import iterator.nucleus.Serialization
+import iterator.nucleus.audit.AuditService
+import iterator.nucleus.audit.GenericAuditEvent
+import iterator.nucleus.audit.NucleusAuditEventType
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -12,6 +15,7 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.AliasFor
@@ -29,6 +33,9 @@ import org.springframework.kafka.core.ProducerFactory
 import org.springframework.retry.annotation.Backoff
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.event.TransactionPhase
+import org.springframework.transaction.event.TransactionalEventListener
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.full.declaredMemberProperties
@@ -48,6 +55,8 @@ class KafkaConfiguration {
           ProducerConfig.CLIENT_ID_CONFIG to "nucleus",
           ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
           ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
+          ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG to true,
+          ProducerConfig.ACKS_CONFIG to "all",
         ),
       )
     fac.valueSerializer = serializer
@@ -68,6 +77,7 @@ class KafkaConfiguration {
           ConsumerConfig.AUTO_OFFSET_RESET_CONFIG to "earliest",
           ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG to true,
           ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
+          ConsumerConfig.METADATA_MAX_AGE_CONFIG to "1000",
         ),
       )
     fac.setValueDeserializer(deserializer)
@@ -183,6 +193,48 @@ object KafkaConfigurationUtils {
 
 object KafkaConstants {
   const val PRIVATE_TOPIC_PREFIX = "nucleus.private."
+  const val PUBLIC_TOPIC_PREFIX = "nucleus.public."
+}
+
+abstract class OutboundEvent {
+  abstract val topic: String
+  abstract val key: String
+  abstract val auditType: NucleusAuditEventType
+  open val auditPrincipal: String? = null
+  open val auditTimestamp: Instant = Instant.now()
+  open val auditData: Map<String, Any> = emptyMap()
+}
+
+interface OutboundEventPublisher {
+  fun publish(event: OutboundEvent)
+}
+
+data class OutboundEventReady(
+  val event: OutboundEvent,
+)
+
+@Component
+class KafkaOutboundEventPublisher(
+  val applicationEventPublisher: ApplicationEventPublisher,
+  val kafkaTemplate: KafkaTemplate<String, Any>,
+  val auditService: AuditService,
+) : OutboundEventPublisher {
+  override fun publish(event: OutboundEvent) {
+    auditService.publishAuditEvent(
+      GenericAuditEvent(
+        type = event.auditType,
+        principal = event.auditPrincipal,
+        data = event.auditData,
+        timestamp = event.auditTimestamp,
+      ),
+    )
+    applicationEventPublisher.publishEvent(OutboundEventReady(event))
+  }
+
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  fun onCommit(ready: OutboundEventReady) {
+    kafkaTemplate.send(ready.event.topic, ready.event.key, ready.event)
+  }
 }
 
 @ConfigurationProperties(prefix = "nucleus.defaults.kafka")

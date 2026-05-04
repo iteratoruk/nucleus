@@ -2,6 +2,7 @@ package iterator.nucleus
 
 import iterator.nucleus.audit.AuditService
 import iterator.nucleus.audit.MockAuditService
+import iterator.nucleus.kafka.TestOutboundEventCollector
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.BeanFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -43,12 +44,19 @@ abstract class AbstractApiTest(
 ) : TestContainers {
   @Autowired lateinit var auditService: AuditService
 
+  @Autowired lateinit var outboundEventCollector: TestOutboundEventCollector
+
   val mockAuditService: MockAuditService
     get() = auditService as MockAuditService
 
   @BeforeEach
   fun resetAuditServiceMock() {
     mockAuditService.clear()
+  }
+
+  @BeforeEach
+  fun resetOutboundEventCollector() {
+    outboundEventCollector.clear()
   }
 }
 

@@ -58,3 +58,30 @@ And no second AccountOpened event is emitted
 
 **Open Questions:**
 None.
+
+**Technical Implementation Notes:**
+
+Recorded during implementation as items that are intentionally deferred but worth
+revisiting in subsequent stories.
+
+- *Accounting code rejection branch.* `AccountService.open` raises
+  `error("Accounting code unresolved for $classificationCode")` when the resolver
+  returns null. This is a deliberate placeholder for the rejection path and not
+  the production-quality error contract. NUC-013 covers the failure cases for
+  Invariant 9 (resolvable accounting code, ledger-side consistency) and is the
+  natural place to replace the `error(...)` with a structured
+  `NucleusValidationException` per ADR-013.
+
+- *Test event collector and cumulative reads.* The test infrastructure's
+  `TestOutboundEventCollector` creates an on-demand consumer per call, seeks to
+  the beginning of each topic, and returns every event that has ever been
+  published to that topic during the test run. This was chosen for robustness on
+  clean broker startup (the initial `@KafkaListener` design suffered from a
+  topic-creation / consumer-subscription race that produced flaky first-run
+  failures). The trade-off is that tests asserting event counts must filter by a
+  test-specific marker — `accountIdentifier` is the natural one for
+  `AccountOpened` — to scope assertions to events the test itself caused. If the
+  filter pattern becomes repetitive or per-test event volume grows, replacing the
+  cumulative read with a `@BeforeEach` snapshot of partition end-offsets and
+  reading from the snapshot would localise the change to the collector class
+  with no test-side impact.

@@ -20,6 +20,7 @@ import org.springframework.retry.annotation.EnableRetry
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.scheduling.annotation.EnableScheduling
 import java.math.BigDecimal
+import java.time.Clock
 
 @EnableAsync
 @EnableRetry
@@ -37,6 +38,8 @@ class App {
   }
 
   @Bean fun objectMapper(): ObjectMapper = Serialization.mapper
+
+  @Bean fun clock(): Clock = Clock.systemUTC()
 }
 
 class BigDecimalFromStringDeserializer : StdDeserializer<BigDecimal>(BigDecimal::class.java) {
