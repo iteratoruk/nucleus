@@ -90,13 +90,14 @@ A decision is worth recording when:
 - It encodes an assumption about the domain that is not obvious from the code.
 - It is the kind of decision that, if made differently later, would require significant rework.
 
-Output: an ADR saved to `docs/adr/` using the ADR template below.
+Output: an ADR saved to `docs/architecture/adrs/` using the ADR template below.
 
 ### 3. Design Review
 
 *Used before a story moves to implementation.*
 
-Input: a user story with acceptance criteria from `docs/stories/`.
+Input: a story issue (labelled `story`) with acceptance criteria, loaded with
+`gh issue view <number> --comments`.
 
 Process:
 1. Identify which aggregates are involved.
@@ -113,20 +114,20 @@ Output: a structured review document, or a set of explicit questions to be resol
 *Used when a question cannot be answered confidently enough to write a story or make
 an architectural decision — an aporia that must be resolved before work can proceed.*
 
-Entry point: a spike document in `docs/spikes/`, opened and partially completed before
+Entry point: a spike issue (labelled `spike`), opened and partially completed before
 the session begins. The Question, Motivation, Time-Box, Approach, and Determined Output
 fields must be filled in before the session starts. The session does not begin from a
-domain area or a candidate decision — it begins from the question the spike document
+domain area or a candidate decision — it begins from the question the spike issue
 names.
 
 The question drives the session. There is no model to produce unless the spike's
 determined output is a domain model or ADR. The investigation follows the approach
-stated in the spike document; departures from it are made explicit, not silent.
+stated in the spike issue; departures from it are made explicit, not silent.
 
 Process:
 1. Restate the question precisely. Confirm it is answerable within the time-box.
-2. Work through the approach declared in the spike document.
-3. Populate the Result section of the spike document as the investigation progresses.
+2. Work through the approach declared in the spike issue.
+3. Populate the Result section of the spike issue as the investigation progresses.
    Do not wait until the end — record findings as they arise.
 4. Produce the output declared in the Determined Output field: write the ADR, save
    the recommendation document, or complete the Demo Notes section.
@@ -134,8 +135,8 @@ Process:
    answered, what remains open, and what additional time and approach would be needed
    to close it. Do not silently continue past the time-box.
 
-Output: whatever the spike document declares in its Determined Output field — an ADR,
-a recommendation document, or completed demo notes. The spike document itself is
+Output: whatever the spike issue declares in its Determined Output field — an ADR,
+a recommendation document, or completed demo notes. The spike issue itself is
 updated with the Result. If the spike is abandoned before completion, the Result
 section records why and what would be needed to resume.
 

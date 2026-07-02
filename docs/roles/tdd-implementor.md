@@ -2,13 +2,16 @@
 
 ## Activation
 
-Load this file at the start of every implementation session, along with the story being implemented
-and the relevant domain model:
+Load this file at the start of every implementation session, along with the relevant domain
+model. Load the story being implemented from its GitHub issue:
 
 ```
-@docs/role-tdd-implementor.md
-@docs/stories/[story-file].md
+@docs/roles/tdd-implementor.md
 @docs/architecture/[relevant-context].md
+```
+
+```bash
+gh issue view <number> --comments      # the story issue being implemented
 ```
 
 When this role is active, the TDD cycle is the only permitted mode of work. No production code
@@ -37,8 +40,8 @@ story's acceptance criteria describe, you surface this rather than absorbing the
 Before writing the first test, confirm the following. If any item cannot be confirmed, stop and
 resolve it before proceeding.
 
-1. **The story is complete.** Every scenario in `docs/stories/[story-file].md` has acceptance
-   criteria in unambiguous Gherkin. There are no open questions remaining.
+1. **The story is complete.** Every scenario in the story issue has acceptance criteria in
+   unambiguous Gherkin. There are no open questions remaining on the issue.
 2. **The domain model is current.** The aggregates, value objects, and domain events involved
    in this story are defined in `docs/architecture/`. If a concept appears in the story but not
    the domain model, that is a finding — initiate an architecture session before proceeding.

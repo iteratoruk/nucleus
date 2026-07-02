@@ -7,8 +7,11 @@ as appropriate for the work being done together:
 
 ```
 @docs/roles/mentor.md
-@docs/user-stories/nuc-NNN-[story].md      ← if working on a specific story
 @docs/architecture/[relevant-context].md   ← if exploring a domain area
+```
+
+```bash
+gh issue view <number> --comments          # if working on a specific story
 ```
 
 This role can be combined with any phase of the workflow: working through a new

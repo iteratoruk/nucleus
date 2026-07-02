@@ -2,12 +2,15 @@
 
 ## Activation
 
-Load this file at the start of every task implementation session, along with the task
-document:
+Load this file at the start of every task implementation session. Load the task from its
+GitHub issue:
 
 ```
 @docs/roles/task-implementor.md
-@docs/tasks/TSK-NNN-[task-title].md
+```
+
+```bash
+gh issue view <number> --comments      # the task issue being implemented
 ```
 
 When this role is active, the mode of work is behaviour-preserving change under the
@@ -43,9 +46,8 @@ Tests must not be weakened to make a task pass.
 Before making any changes, confirm the following. If any item cannot be confirmed,
 stop and resolve it before proceeding.
 
-1. **The task document is complete.** The goal, scope boundary, and verification steps
-   are all stated in `docs/tasks/TSK-NNN-[task-title].md`. There are no ambiguities
-   about what is in scope.
+1. **The task issue is complete.** The goal, scope boundary, and verification steps
+   are all stated in the task issue. There are no ambiguities about what is in scope.
 2. **The baseline is green.** Run `./gradlew test`, `./gradlew detekt`, and
    `./gradlew spotlessCheck` against the unmodified codebase before making changes.
    If the baseline is not green, that is a finding to surface, not a state to work
@@ -57,7 +59,7 @@ stop and resolve it before proceeding.
 
 ## Mode of Work
 
-A task is not driven by a test cycle. It is driven by the task document's scope
+A task is not driven by a test cycle. It is driven by the task issue's scope
 statement. Work through the change described, verifying continuously that the existing
 test suite remains green.
 
@@ -76,12 +78,12 @@ the work.
 During execution, you will sometimes encounter something that is not the task but
 that is worth addressing: a test that covers behaviour the task was expected to change
 but did not, a pattern that should be a story, a question that should be a spike.
-Record each finding in the task document's Findings section with enough detail for it
+Record each finding in the task issue's Findings section with enough detail for it
 to become a story or spike. Do not address findings inline.
 
 ### Scope boundary
 
-The task document states an explicit scope boundary. If an action you are about to
+The task issue states an explicit scope boundary. If an action you are about to
 take is not clearly within that boundary, do not take it — surface it as a candidate
 for a new task, story, or spike.
 
@@ -104,7 +106,7 @@ A task is complete when all three of the following pass against the modified cod
 
 These are the acceptance criteria for every task. They are not supplementary — they
 are the totality of the correctness criterion. Any task-specific additional verification
-steps are stated in the task document and must also pass.
+steps are stated in the task issue and must also pass.
 
 The test suite must pass with no modifications to existing tests beyond those
 explicitly required by the task (e.g. updating a package reference after a package
@@ -123,11 +125,11 @@ finding.
 - Do not introduce new functional behaviour. A task that changes what the system does
   — rather than how it is structured — has become a story. Stop and surface this
   before continuing.
-- Do not absorb scope creep. Findings go in the task document, not into the
+- Do not absorb scope creep. Findings go in the task issue, not into the
   implementation.
 - Do not leave the codebase in a partially completed state. If the session must end
   before the task is complete, state clearly what has been done, what remains, and
   whether the current state is deployable. A half-applied migration or a partially
   renamed package is worse than the original state.
-- Commit messages for task work use the `chore:` conventional commit prefix and the
-  `TSK-NNN` identifier.
+- Commit messages for task work use the `chore:` conventional commit prefix. Reference the
+  task's GitHub issue number in the commit body or pull request with `Closes #N`.

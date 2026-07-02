@@ -8,13 +8,13 @@ requirements authoring, and TDD implementation — but it operates within a defi
 framework of roles, constraints, and reference documents that you, as a human
 contributor, own and maintain.
 
-This guide explains that framework: what each file and directory is for, how to use
-Claude Code in each of the three contribution roles, and the prompt templates to start
-each type of session.
+This guide explains that framework: what each file, directory, and issue type is for,
+how to use Claude Code in each of the four contribution roles, and the prompt templates
+to start each type of session.
 
 Claude Code does not drive the project. You do. Claude Code is a thinking pair and a
-capable implementor, operating under constraints you set. The documents in this
-repository are the mechanism by which you set them.
+capable implementor, operating under constraints you set. The reference documents in
+this repository and the issues in its tracker are the mechanism by which you set them.
 
 ---
 
@@ -36,8 +36,8 @@ information a new senior engineer would need to orient themselves on day one and
 need to keep in mind throughout.
 
 **What does not belong here:** role-specific instructions, domain knowledge, persona
-definitions, story content. Those belong in the `docs/` structure and are loaded
-on demand.
+definitions, story content. Those belong in the `docs/` structure or in the issue
+tracker and are loaded on demand.
 
 Keep it under 200 lines. Beyond that, late instructions are increasingly likely to be
 ignored under context pressure.
@@ -67,22 +67,20 @@ work, not how the project works.
 ### `/docs/architecture/`
 
 Architecture documents produced in architect-role sessions with Claude Code. Each
-document covers one bounded context or significant domain area.
+document covers one bounded context or significant domain area. These are files, not
+issues — they are the durable, authoritative reference for the domain model.
 
 Each document follows the domain model template defined in `docs/roles/architect.md`:
 bounded context statement, ubiquitous language, aggregates with invariants and domain
 events, context relationships, and open questions.
 
-**Current documents:**
-- `parameter-value-hierarchy.md` — the classification code tree, parameter value
-  storage and resolution, account node attachment.
-- `account-features.md` — the strongly-typed external feature catalogue, internal
-  parameter key mapping, and the two initial features (asset interest, liability
-  interest).
-
 Architecture documents are living documents. They are updated as open questions are
 resolved and as new domain areas are understood. They are the authoritative reference
 for TDD sessions and story authoring sessions.
+
+The domain layer was reset to a skeleton, so this directory is currently empty. Its
+documents are re-grown one bounded context at a time as those contexts are re-opened
+in architecture sessions.
 
 ---
 
@@ -90,7 +88,7 @@ for TDD sessions and story authoring sessions.
 
 Architectural Decision Records. Each ADR captures a decision that forecloses other
 reasonable options, encodes a non-obvious domain assumption, or has implications across
-more than one bounded context.
+more than one bounded context. ADRs are files, not issues.
 
 ADRs are numbered sequentially (`ADR-001`, `ADR-002`, ...) and follow the template
 defined in `docs/roles/architect.md`: context, decision, consequences (positive,
@@ -99,7 +97,9 @@ negative, risks), and alternatives considered.
 **Status values:** `Proposed`, `Accepted`, `Superseded by ADR-NNN`.
 
 ADRs are not deleted when superseded. The history of decisions — including decisions
-later reversed — is part of the architectural record.
+later reversed — is part of the architectural record. (The prior ADR set was removed in
+the reset; numbering resumes from `ADR-001` unless and until earlier records are
+restored.)
 
 ADR candidates are identified during architecture sessions and named in the session
 output. The ADRs themselves are written as a subsequent step, either in the same
@@ -126,7 +126,7 @@ by domain area.
 | `liam-from-lending.md` | Liam | Active client — Lending |
 | `maya-from-mortgages.md` | Maya | Active client — Mortgages |
 | `robin-from-reporting.md` | Robin | Passive observer |
-| `alex-from-accounting.md` | Alex | Passive observer |
+| `alex-from-accounts.md` | Alex | Passive observer |
 | `eddie-from-enterprise.md` | Eddie | Human operator proxy |
 | `parker-from-payments.md` | Parker | External counterparty |
 | `casey-the-customer.md` | Casey | Indirect beneficiary |
@@ -159,12 +159,12 @@ Load a role file at the start of every session using the `@` reference syntax.
 **Current roles:**
 
 `architect.md` — domain modelling and architectural decision sessions. Output is
-domain model documents and ADR candidates. No production code or tests.
+domain model documents in `docs/architecture/` and ADR candidates. No production code
+or tests.
 
-`story-author.md` — requirements and user story authoring sessions. Output is
-user stories in `docs/user-stories/` with persona, value statement, Gherkin
-acceptance criteria, out-of-scope statement, and open questions. No production
-code or tests.
+`story-author.md` — requirements and user story authoring sessions. Output is a GitHub
+issue labelled `story` with persona, value statement, Gherkin acceptance criteria,
+out-of-scope statement, and open questions. No production code or tests.
 
 `tdd-implementor.md` — TDD implementation sessions. Output is production code
 and tests, written in strict red-green-refactor order. No story authoring or
@@ -184,56 +184,46 @@ and addressed in a subsequent architecture session — not resolved inline.
 
 ---
 
-### `/docs/user-stories/`
+### GitHub Issues — stories, tasks, and spikes
 
-User stories produced in story-author-role sessions. Each story is a separate
-markdown file named by story identifier and short title:
-`nuc-NNN-short-title.md`.
+User stories, tasks, and spikes are tracked as GitHub issues, not as files in the
+repository. Each type is distinguished by a label:
 
-Each story follows the format defined in `docs/roles/story-author.md`: persona,
-story statement (As / I want / So that), optional background, Gherkin scenarios,
-out-of-scope statement, and open questions.
+| Type | Label | What it is |
+|---|---|---|
+| User story | `story` | A requirement expressed as persona + value statement + Gherkin acceptance criteria. |
+| Task | `task` | Behaviour-preserving engineering work — upgrades, restructuring, lint application. |
+| Spike | `spike` | A time-boxed investigation into a question that blocks a story or decision. |
 
-A story is not ready for a TDD session until all open questions are resolved. If
-a story has open questions, resolve them — either directly or via an architecture
-session — before opening a TDD session against it.
+**The issue number is the identifier.** There is no separate `NUC-`/`SPK-`/`TSK-`
+sequence — an item is referred to by its GitHub issue number (e.g. `#42`), and its type
+is read from its label.
 
----
+Issue bodies follow a fixed structure, scaffolded by the templates in
+`.github/ISSUE_TEMPLATE/`:
 
-### `/docs/spikes/`
+- **Story** (`story.md`): persona, story statement (As / I want / So that), optional
+  background, Gherkin scenarios, out-of-scope statement, open questions.
+- **Spike** (`spike.md`): question, motivation, time-box, approach, determined output,
+  and a result section populated at the end of the spike.
+- **Task** (`task.md`): goal, motivation, scope boundary, verification steps, and a
+  findings section populated during execution.
 
-Spike documents produced when a question blocks a story or architectural decision.
-Each spike is a separate markdown file named by identifier and abbreviated question:
-`spk-NNN-short-title.md`.
+Create an issue with `gh issue create` (selecting the appropriate template) or the web
+form. Load an issue into a Claude Code session with `gh issue view <number> --comments`.
 
-Each spike follows the template in `docs/spikes/SPK-000-spike-template.md`: question,
-motivation, time-box, approach, determined output, and result. The result section is
-populated at the end of the spike session.
+The readiness rules are unchanged by the move to issues:
 
-Spike sessions use the architect role (`docs/roles/architect.md`), specifically the
-Spike Session type defined there. A spike document must be partially completed — with
-the Question, Motivation, Time-Box, Approach, and Determined Output fields filled in —
-before a spike session is opened.
+- A story is not ready for a TDD session until all open questions are resolved.
+- A spike is not ready to open until its Question, Motivation, Time-Box, Approach, and
+  Determined Output are filled in.
+- A task is not ready to open until its Goal, Motivation, Scope Boundary, and
+  Verification Steps are stated.
 
-Spike identifiers use the `SPK-NNN` sequence. Commits that produce spike documents
-use the `docs:` conventional commit prefix.
-
----
-
-### `/docs/tasks/`
-
-Task documents for behaviour-preserving engineering work. Each task is a separate
-markdown file named by identifier and short title:
-`tsk-NNN-short-title.md`.
-
-Each task follows the template in `docs/tasks/TSK-000-task-template.md`: goal,
-motivation, scope boundary, verification steps, and findings. The findings section
-is populated during execution.
-
-Task sessions use the task-implementor role (`docs/roles/task-implementor.md`).
-
-Task identifiers use the `TSK-NNN` sequence. Commits for task work use the `chore:`
-conventional commit prefix.
+Outputs and findings are recorded back on the issue as comments or edits to the issue
+body — not as files. The exception is a spike whose determined output is an architecture
+document or ADR: that output is saved to `docs/` as a file, and the issue records that
+it was produced and where.
 
 ---
 
@@ -259,31 +249,33 @@ the next story is being authored. Clear aggressively.
 Before opening any session:
 - Confirm the relevant architecture documents are current. If they are not, run an
   architecture session first.
-- For TDD sessions: confirm the story has no open questions.
+- For TDD sessions: confirm the story issue has no open questions.
 - For story sessions: confirm the relevant personas and architecture documents are
   loaded.
 - For architecture sessions: confirm what is settled (do not re-litigate) and what
   is open (do not assume).
-- For spike sessions: confirm the spike document exists with the Question, Motivation,
-  Time-Box, Approach, and Determined Output fields complete before starting.
+- For spike sessions: confirm the spike issue has its Question, Motivation, Time-Box,
+  Approach, and Determined Output fields complete before starting.
 - For task sessions: confirm the baseline is green before making any changes.
 
 At the end of any session that produces output:
-- Ask Claude Code to save all outputs to the appropriate `docs/` location before
-  clearing or closing the session.
-- For TDD sessions: confirm which scenarios are now covered by passing tests and
-  record this in the story file.
-- For spike sessions: confirm the Result section of the spike document has been
-  populated and the determined output has been saved to disk.
-- For task sessions: confirm the full build passes and any findings have been recorded
-  in the task document before closing.
+- Architecture documents and ADRs: save them under `docs/` before clearing or closing
+  the session.
+- Stories, tasks, and spikes: create or update the corresponding GitHub issue with `gh`
+  — do not leave the output only in the session transcript.
+- For TDD sessions: record which scenarios are now covered by passing tests as a comment
+  on the story issue.
+- For spike sessions: populate the Result section on the spike issue and save any
+  determined output (document or ADR) to disk.
+- For task sessions: confirm the full build passes and record any findings as a comment
+  on the task issue before closing.
 
 ---
 
 ## Prompt Templates
 
-These templates are starting points. Adjust the `@` references, story identifiers,
-and domain area descriptions to match the session you are opening.
+These templates are starting points. Adjust the `@` references, issue numbers, and
+domain area descriptions to match the session you are opening.
 
 ---
 
@@ -349,8 +341,9 @@ Use [Cameron / Sasha / specific persona] as the persona for stories that concern
 [general mechanism / specific product domain]. Use [other persona] only if a story
 requires [specific detail] that [primary persona] cannot express.
 
-Write stories in `docs/user-stories/` using the identifier sequence starting at
-NUC-[NNN].
+Create one GitHub issue per story, labelled `story`, following the story issue template
+(`.github/ISSUE_TEMPLATE/story.md`). Give each a short imperative title and create it
+with `gh issue create`.
 ```
 
 ---
@@ -361,11 +354,10 @@ Use when: writing new tasks or refining existing tasks.
 
 ```
 @docs/roles/work-unit-author.md
-@docs/tasks/TSK-000-task-template.md
 
 ---
 
-We are opening a work unit authoring session to produce a task document.
+We are opening a work unit authoring session to produce a task.
 
 ## The work to be documented
 
@@ -393,13 +385,13 @@ If none, delete this section.]
 
 ---
 
-Before writing the document:
-1. Confirm the next available TSK identifier by checking `docs/tasks/`.
+Before writing the issue:
+1. Check existing open task issues (`gh issue list --label task`) to avoid duplication.
 2. Conduct any research listed above and report findings before drafting.
-3. If the work does not warrant a formal task document, say so and explain why.
+3. If the work does not warrant a formal task, say so and explain why.
 
-Produce the completed task document and save it to
-`docs/tasks/TSK-NNN-[short-title].md`.
+Produce the completed task as a GitHub issue labelled `task`, following the task issue
+template (`.github/ISSUE_TEMPLATE/task.md`). Create it with `gh issue create`.
 ```
 
 ### Spike Authoring Session
@@ -408,11 +400,10 @@ Use when: writing new spikes or refining existing spikes.
 
 ```
 @docs/roles/work-unit-author.md
-@docs/spikes/SPK-000-spike-template.md
 
 ---
 
-We are opening a work unit authoring session to produce a spike document.
+We are opening a work unit authoring session to produce a spike.
 
 ## The question to be investigated
 
@@ -436,8 +427,7 @@ covered and helps bound the investigation.]
 
 [Optional. If you already have a view on how the investigation should proceed —
 what to try, what to compare, what documentation to read — describe it here.
-The spike document will refine this, but having a starting point helps scope
-the time-box.]
+The spike will refine this, but having a starting point helps scope the time-box.]
 
 ## Proposed time-box
 
@@ -446,16 +436,16 @@ condition under which an extension would be appropriate.]
 
 ---
 
-Before writing the document:
-1. Confirm the next available SPK identifier by checking `docs/spikes/`.
+Before writing the issue:
+1. Check existing open spike issues (`gh issue list --label spike`) to avoid duplication.
 2. If the question as stated cannot be answered definitively by a time-boxed
    investigation — for example, because it is actually a domain modelling question
-   or an open requirements question — say so before producing the document.
-3. If the work does not warrant a formal spike document (the question can be
-   answered in minutes by reading documentation), say so and explain why.
+   or an open requirements question — say so before producing the issue.
+3. If the work does not warrant a formal spike (the question can be answered in
+   minutes by reading documentation), say so and explain why.
 
-Produce the completed spike document and save it to
-`docs/spikes/SPK-NNN-[short-title].md`.
+Produce the completed spike as a GitHub issue labelled `spike`, following the spike issue
+template (`.github/ISSUE_TEMPLATE/spike.md`). Create it with `gh issue create`.
 ```
 
 ### TDD Implementation Session
@@ -465,14 +455,17 @@ domain model is current.
 
 ```
 @docs/roles/tdd-implementor.md
-@docs/user-stories/nuc-NNN-[story-title].md
 @docs/architecture/[relevant-domain-doc].md
 @docs/architecture/[additional-relevant-doc].md  ← e.g. account-features.md
                                                     if features are in scope
 
 ---
 
-We are opening a TDD implementation session for **NUC-NNN: [Story title]**.
+Load the story from its GitHub issue:
+
+    gh issue view <number> --comments
+
+We are opening a TDD implementation session for **#<number>: [Story title]**.
 
 ## Pre-implementation confirmation
 
@@ -495,7 +488,7 @@ test must do to it in plain terms.]
 verifiable via MockAuditService.]
 
 **Explicit scope boundary:** [Name anything that is adjacent and tempting but
-explicitly out of scope for this story, with the story number that covers it.]
+explicitly out of scope for this story, with the issue number that covers it.]
 
 ## Constraints for this session
 
@@ -517,26 +510,28 @@ for confirmation before writing any production code.
 Use when: a question cannot be answered confidently enough to write a story or make
 an architectural decision, and that question is blocking identifiable work.
 
-Before opening this session, create and partially complete the spike document at
-`docs/spikes/spk-NNN-[short-title].md`. Fill in the Question, Motivation, Time-Box,
-Approach, and Determined Output fields. The session begins from the document, not
-from an open-ended area.
+Before opening this session, create the spike issue (labelled `spike`) and fill in its
+Question, Motivation, Time-Box, Approach, and Determined Output fields. The session
+begins from the issue, not from an open-ended area.
 
 ```
 @docs/roles/architect.md
-@docs/spikes/spk-NNN-[short-title].md
 @docs/architecture/[relevant-doc].md   ← if the spike concerns an existing domain area
 
 ---
 
-We are opening a spike session for **SPK-NNN: [Question in abbreviated form]**.
+Load the spike from its GitHub issue:
 
-The spike document is at `docs/spikes/spk-NNN-[short-title].md`. The Question,
-Motivation, Time-Box, Approach, and Determined Output fields are complete.
+    gh issue view <number> --comments
+
+We are opening a spike session for **#<number>: [Question in abbreviated form]**.
+
+The issue's Question, Motivation, Time-Box, Approach, and Determined Output fields are
+complete.
 
 ## What this spike must answer
 
-[Restate the question from the spike document in one sentence.]
+[Restate the question from the issue in one sentence.]
 
 ## What is blocked
 
@@ -544,13 +539,14 @@ Motivation, Time-Box, Approach, and Determined Output fields are complete.
 
 ## Time-box
 
-[Restate the initial allocation from the spike document.]
+[Restate the initial allocation from the issue.]
 
 ## Proceed
 
-Begin the investigation following the approach in the spike document. Record findings
-in the Result section as they arise. Produce the determined output declared in the
-spike document. Surface the state explicitly at the time-box boundary.
+Begin the investigation following the approach in the issue. Record findings in the
+issue's Result section (as a comment or body edit) as they arise. Produce the determined
+output declared in the issue; if it is an architecture document or ADR, save it under
+`docs/` and link it from the issue. Surface the state explicitly at the time-box boundary.
 ```
 
 ---
@@ -561,70 +557,75 @@ Use when: a piece of engineering work must be done that has no functional impact
 the system's behaviour when performed correctly — dependency upgrades, package
 restructuring, linting rule application, framework migrations.
 
-Before opening this session, create the task document at
-`docs/tasks/tsk-NNN-[short-title].md` with the Goal, Motivation, Scope Boundary, and
-Verification Steps complete.
+Before opening this session, create the task issue (labelled `task`) with its Goal,
+Motivation, Scope Boundary, and Verification Steps complete.
 
 ```
 @docs/roles/task-implementor.md
-@docs/tasks/tsk-NNN-[short-title].md
 
 ---
 
-We are opening a task session for **TSK-NNN: [Task title]**.
+Load the task from its GitHub issue:
+
+    gh issue view <number> --comments
+
+We are opening a task session for **#<number>: [Task title]**.
 
 ## Pre-task confirmation
 
 Before making any changes, confirm:
 
-1. The task document is complete: Goal, Motivation, Scope Boundary, and Verification
+1. The task issue is complete: Goal, Motivation, Scope Boundary, and Verification
    Steps are all stated.
 2. The baseline is green: run `./gradlew test`, `./gradlew detekt`, and
    `./gradlew spotlessCheck` against the unmodified codebase and confirm all pass.
 
 ## Scope boundary for this session
 
-[Restate the scope boundary from the task document. Name anything adjacent that is
+[Restate the scope boundary from the task issue. Name anything adjacent that is
 explicitly not part of this task.]
 
 ## Proceed
 
 Execute the task within the stated scope. Record any findings — regressions,
-candidate stories, candidate spikes — in the task document's Findings section.
-Do not absorb findings into the implementation. Confirm the full build passes on
-completion.
+candidate stories, candidate spikes — as a comment on the task issue. Do not absorb
+findings into the implementation. Confirm the full build passes on completion.
 ```
 
 ---
 
-## Identifier Sequences and Commit Conventions
+## Identifiers and Commit Conventions
 
-| Work unit | Identifier | Commit prefix | Location |
-|---|---|---|---|
-| User story | `NUC-NNN` | `feat:` / `fix:` | `docs/user-stories/nuc-NNN-title.md` |
-| Spike | `SPK-NNN` | `docs:` | `docs/spikes/spk-NNN-title.md` |
-| Task | `TSK-NNN` | `chore:` | `docs/tasks/tsk-NNN-title.md` |
-| ADR | `ADR-NNN` | `docs:` | `docs/architecture/adrs/adr-NNN-title.md` |
+| Work unit | Identifier | Label | Commit prefix | Home |
+|---|---|---|---|---|
+| User story | GitHub issue `#N` | `story` | `feat:` / `fix:` | GitHub issue |
+| Spike | GitHub issue `#N` | `spike` | `docs:` * | GitHub issue |
+| Task | GitHub issue `#N` | `task` | `chore:` | GitHub issue |
+| ADR | `ADR-NNN` | — | `docs:` | `docs/architecture/adrs/adr-NNN-title.md` |
+| Architecture document | — | — | `docs:` | `docs/architecture/[name].md` |
+
+\* A spike whose findings live only on the issue may produce no commit at all. A spike
+whose determined output is an ADR or architecture document commits that file with `docs:`.
 
 All commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).
-The identifier (`NUC-NNN`, `SPK-NNN`, `TSK-NNN`) may be included in the commit
-message body or as a scope (`feat(NUC-001): ...`) but is not required in the subject
-line if the message is otherwise unambiguous.
+Reference the issue an item belongs to in the commit body or pull request description
+with `Closes #N` / `Fixes #N` so GitHub closes it on merge. The issue number may also
+appear as the commit scope, e.g. `feat(#42): ...`.
 
 ---
 
 ## Common Failure Modes
 
 **Architecture questions surfacing in TDD sessions.** Park them. Note the question
-in a comment or a scratch file. Finish the current test cycle, then open an
-architecture session. Do not resolve architecture questions inline during TDD —
+as a comment on the issue or in a scratch note. Finish the current test cycle, then open
+an architecture session. Do not resolve architecture questions inline during TDD —
 the answers will not be documented and will become implicit assumptions.
 
 **Stories with open questions entering TDD.** A story with an unresolved open
 question is not ready for implementation. The open question will surface as an
 implicit decision during the TDD session, made under the pressure of a red test,
 and will not be recorded anywhere. Resolve open questions in a story review or
-architecture session first.
+architecture session first, and edit the story issue before opening the TDD session.
 
 **Context accumulation across stories.** Use `/clear` between stories. A TDD session
 that has implemented three stories carries context about the first two that is no
@@ -638,9 +639,9 @@ whatever output is worth keeping, clear, and reopen in the appropriate role.
 
 **Loading too much context.** Load only the personas and architecture documents
 relevant to the current session. Loading the full persona cast, all architecture
-documents, and all user stories into a single session produces worse results than
+documents, and every open issue into a single session produces worse results than
 loading the three or four documents that are genuinely needed. The `@` reference
-system exists to make selective loading easy — use it selectively.
+system and `gh issue view` exist to make selective loading easy — use them selectively.
 
 **Spikes that produce code.** A spike session that begins producing production code
 has drifted into implementation. Stop. Save whatever investigation output exists.
@@ -655,7 +656,7 @@ should take, that is a question for an architecture session, not a spike.
 
 **Tasks that introduce functional behaviour.** A task that changes what the system
 does — rather than how it is structured — has become a story. If this is discovered
-mid-task, stop, record the finding in the task document, and open a story authoring
+mid-task, stop, record the finding on the task issue, and open a story authoring
 session. Do not ship functional behaviour under a `chore:` commit.
 
 **Weakening tests to make a task pass.** If a task causes tests to fail and the

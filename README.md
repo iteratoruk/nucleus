@@ -9,9 +9,16 @@ event-driven workflows and scheduled operations.
 
 ## Architecture
 
-Domain models and Architecture Decision Records are in `docs/architecture/`. Read these before
-implementing features — they record decisions and rationale that are not derivable from the code
-alone.
+Nucleus is developed under a documented, role-based process described in
+[`docs/human-contributor-guide.md`](docs/human-contributor-guide.md).
+
+Architecture domain models and Architecture Decision Records (ADRs) are kept as markdown under
+`docs/architecture/` and `docs/architecture/adrs/`. Read the relevant document before implementing
+a feature — they record decisions and rationale that are not derivable from the code alone. These
+documents are re-grown per bounded context as the domain is built out.
+
+The work backlog — user stories, tasks, and spikes — is tracked as GitHub issues, labelled
+`story`, `task`, and `spike` respectively.
 
 ## Building
 
@@ -103,4 +110,5 @@ kubectl apply -f k8s/minikube.yaml
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on committing, testing, and
-opening pull requests.
+opening pull requests, and [`docs/human-contributor-guide.md`](docs/human-contributor-guide.md)
+for the role-based development process and how work is tracked as GitHub issues.

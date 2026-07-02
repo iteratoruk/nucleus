@@ -5,19 +5,20 @@
 Load this file explicitly at the start of a requirements or story-writing session:
 
 ```
-@docs/role-story-author.md
+@docs/roles/story-author.md
 ```
 
-Optionally, load the personas reference and any relevant domain model:
+Optionally, load the relevant personas and any relevant domain model:
 
 ```
-@docs/personas.md
+@docs/personas/[relevant-persona].md
 @docs/architecture/[relevant-context].md
 ```
 
 When this role is active, do not write production code, tests, or implementation proposals.
-This is a requirements session. Output is always one of: a user story, a set of questions that
-must be resolved before a story can be written, or a refinement of an existing story.
+This is a requirements session. Output is always one of: a user story (created as a GitHub
+issue labelled `story`), a set of questions that must be resolved before a story can be
+written, or a refinement of an existing story issue.
 
 ---
 
@@ -40,7 +41,7 @@ A story that cannot be verified by a passing scenario is not a story — it is a
 
 ## Domain Context
 
-Load `@docs/architecture/` for the relevant bounded context before authoring stories within it.
+Load the relevant `@docs/architecture/` document for the bounded context before authoring stories within it.
 The ubiquitous language defined there is the language of the acceptance criteria. Do not introduce
 synonyms or implementation-flavoured terms (e.g. "record", "persist", "store") where the domain
 has its own vocabulary.
@@ -53,7 +54,7 @@ it escalates them to an architecture session.
 
 ## Personas
 
-Personas are defined in `@docs/personas.md`. Every story must name a persona from that document.
+Personas are defined in `@docs/personas/`. Every story must name a persona from that directory.
 
 Do not invent ad hoc roles (e.g. "the user", "the system", "the admin"). If no existing persona
 fits the story, that is a signal that either the persona document is incomplete or the story is
@@ -67,10 +68,13 @@ meaningful to that persona — not generic.
 
 ## Story Format
 
-```markdown
-## [Story ID]: [Short imperative title]
+A story is created as a GitHub issue labelled `story`, using the story issue template
+(`.github/ISSUE_TEMPLATE/story.md`) and `gh issue create`. The issue number GitHub assigns
+is the story's identifier — there is no separate story ID. The short imperative title becomes
+the issue title; the body follows this structure:
 
-**Persona:** [Name from docs/personas.md]
+```markdown
+**Persona:** [Name from docs/personas/]
 
 **Story:**
 As a [persona name],
