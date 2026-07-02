@@ -9,9 +9,7 @@ plugins {
 	id("org.owasp.dependencycheck") version "12.2.0"
 	id("com.gorylenko.gradle-git-properties") version "2.5.7"
 	id("com.github.ben-manes.versions") version "0.53.0"
-	id("org.sonarqube") version "7.2.3.7755"
 	id("io.gitlab.arturbosch.detekt") version "1.23.8"
-	id("org.jreleaser") version "1.23.0"
 	kotlin("jvm") version "2.0.21"
 	kotlin("plugin.allopen") version "2.0.21"
 	kotlin("plugin.jpa") version "2.0.21"
@@ -47,7 +45,6 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-data-jpa")
   implementation("org.springframework.boot:spring-boot-starter-quartz")
-  implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 
 	/* Compile-time dependencies */
@@ -55,9 +52,6 @@ dependencies {
 	implementation("com.fasterxml.jackson.core:jackson-core")
 	implementation("com.fasterxml.jackson.core:jackson-databind")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-  implementation("com.github.java-json-tools:json-patch:1.13")
-	implementation("commons-io:commons-io:2.21.0")
-  implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.15.2")
 	implementation("org.apache.commons:commons-lang3")
   implementation("org.flywaydb:flyway-core")
   implementation("org.flywaydb:flyway-database-postgresql")
