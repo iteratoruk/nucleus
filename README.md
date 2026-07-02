@@ -112,3 +112,7 @@ kubectl apply -f k8s/minikube.yaml
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on committing, testing, and
 opening pull requests, and [`docs/human-contributor-guide.md`](docs/human-contributor-guide.md)
 for the role-based development process and how work is tracked as GitHub issues.
+
+## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full text.
