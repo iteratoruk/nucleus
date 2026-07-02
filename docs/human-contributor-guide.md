@@ -9,7 +9,7 @@ framework of roles, constraints, and reference documents that you, as a human
 contributor, own and maintain.
 
 This guide explains that framework: what each file, directory, and issue type is for,
-how to use Claude Code in each of the four contribution roles, and the prompt templates
+how to use Claude Code in each of the five contribution roles, and the prompt templates
 to start each type of session.
 
 Claude Code does not drive the project. You do. Claude Code is a thinking pair and a
@@ -107,6 +107,29 @@ session or in a dedicated follow-up.
 
 ---
 
+### `/docs/design/`
+
+Technical design documents produced in technical-designer-role sessions with Claude Code.
+Each document covers one cross-cutting concern (persistence, serialization, messaging, and
+so on) and captures the implementation patterns realised in code as prescriptive guidance for
+TDD sessions: given a recurring implementation problem, how Nucleus solves it, the canonical
+example to follow, and the ways of getting it wrong.
+
+These documents are the counterpart to the architecture documents in `docs/architecture/`. An
+architecture document models what a thing *is* and is prior to any implementation; a technical
+design document governs how that thing is faithfully inscribed in code and is *posterior* to
+it — a pattern is captured only after it exists in the codebase. Where `docs/architecture/` is
+implementation-agnostic, `docs/design/` names base classes, beans, annotations, configuration
+keys, and migrations directly.
+
+They follow the technical design document template defined in
+`docs/roles/technical-designer.md`. Like architecture documents, they are living documents,
+loaded on demand for the concern in play rather than held in every session. The directory is
+currently empty; its documents are grown as patterns are harvested from the skeleton and from
+subsequent TDD sessions.
+
+---
+
 ### `/docs/personas/`
 
 Persona definitions for all stakeholders and clients of Nucleus. Each persona is a
@@ -161,6 +184,12 @@ Load a role file at the start of every session using the `@` reference syntax.
 `architect.md` — domain modelling and architectural decision sessions. Output is
 domain model documents in `docs/architecture/` and ADR candidates. No production code
 or tests.
+
+`technical-designer.md` — technical design sessions. Output is technical design documents
+in `docs/design/` that capture implementation patterns realised in code as reusable guidance
+for TDD sessions. No production code or tests. Where the architect models what a thing *is*,
+prior to implementation, the technical designer documents how it is *built*, after the code
+exists.
 
 `story-author.md` — requirements and user story authoring sessions. Output is a GitHub
 issue labelled `story` with persona, value statement, Gherkin acceptance criteria,
@@ -229,16 +258,18 @@ it was produced and where.
 
 ## Contributing with Claude Code
 
-### The Four Roles
+### The Five Roles
 
-All Claude Code contribution falls into one of four roles. Each has a defined
+All Claude Code contribution falls into one of five roles. Each has a defined
 scope, a role instruction file, and a prompt template below.
 
 **Never mix roles in a single session.** If a TDD session surfaces an architectural
 question, park it and address it in a subsequent architecture session. If a story
 authoring session reveals a missing domain concept, park it and address it in an
-architecture session before resuming story authoring. Context drift — where a session
-accumulates mixed concerns — produces lower quality output across all of them.
+architecture session before resuming story authoring. If a TDD session produces a reusable
+implementation pattern, note it and capture it in a subsequent technical design session
+rather than writing the guidance inline. Context drift — where a session accumulates mixed
+concerns — produces lower quality output across all of them.
 
 **Use `/clear` between stories and between roles.** The context window is a limited
 resource. A story that has been implemented does not need to remain in context while
@@ -254,12 +285,16 @@ Before opening any session:
   loaded.
 - For architecture sessions: confirm what is settled (do not re-litigate) and what
   is open (do not assume).
+- For technical design sessions: confirm the pattern already exists in code. If it does
+  not, it is not ready to document — build it in a TDD session first.
 - For spike sessions: confirm the spike issue has its Question, Motivation, Time-Box,
   Approach, and Determined Output fields complete before starting.
 - For task sessions: confirm the baseline is green before making any changes.
 
 At the end of any session that produces output:
 - Architecture documents and ADRs: save them under `docs/` before clearing or closing
+  the session.
+- Technical design documents: save them under `docs/design/` before clearing or closing
   the session.
 - Stories, tasks, and spikes: create or update the corresponding GitHub issue with `gh`
   — do not leave the output only in the session transcript.
@@ -313,6 +348,46 @@ numbering from [current next number].
 
 Do not propose implementation detail: class names, database schemas, Kotlin types,
 Spring annotations. The output of this session is a domain model and ADR candidates.
+```
+
+---
+
+### Technical Design Session
+
+Use when: capturing an implementation pattern realised in a TDD session, or backfilling the
+patterns latent in existing code (the skeleton), as reusable guidance for future TDD sessions.
+
+```
+@docs/roles/technical-designer.md
+@docs/architecture/[relevant-domain-doc].md   ← reference only, if the pattern serves a domain
+                                                concept; omit if purely infrastructural
+
+---
+
+We are opening a technical design session on [concern].
+
+## The pattern(s) to capture
+
+[Point at the code that realises the pattern — the files, types, base classes, or package.
+Name the problem it solves. If this is a harvest, name the story or architecture concept the
+pattern served in the TDD session that produced it; if this is a backfill, name the
+cross-cutting concern.]
+
+## What is settled
+
+[What about this pattern is not under discussion — that the realising code exists and is
+correct, the concern boundary, any related documents already written.]
+
+## What to produce
+
+Produce a technical design document following the template in
+`docs/roles/technical-designer.md`, targeted at `docs/design/[concern].md` — or add a pattern
+to the existing document for this concern.
+
+Capture only patterns that exist in code and will recur. Do not invent patterns for code that
+does not yet exist — redirect those to a TDD session. Reference the relevant architecture
+document for any domain invariant the pattern serves; do not restate the domain. Name ADR
+candidates; do not write the ADRs here.
 ```
 
 ---
@@ -603,6 +678,7 @@ findings into the implementation. Confirm the full build passes on completion.
 | Task | GitHub issue `#N` | `task` | `chore:` | GitHub issue |
 | ADR | `ADR-NNN` | — | `docs:` | `docs/architecture/adrs/adr-NNN-title.md` |
 | Architecture document | — | — | `docs:` | `docs/architecture/[name].md` |
+| Technical design document | — | — | `docs:` | `docs/design/[name].md` |
 
 \* A spike whose findings live only on the issue may produce no commit at all. A spike
 whose determined output is an ADR or architecture document commits that file with `docs:`.
@@ -653,6 +729,12 @@ the code is written.
 "TBD" or "depends on what we find" is not ready to open. The output type must be
 decided before the session begins. If it is genuinely unclear what form the answer
 should take, that is a question for an architecture session, not a spike.
+
+**Technical design ahead of the code.** A technical design session that documents a
+pattern which does not yet exist in the codebase has inverted the flow: it is inventing
+guidance, not capturing it, and invented patterns are speculative generality. Stop. If the
+pattern is genuinely needed, build it in a TDD session against a story, then harvest it in a
+subsequent technical design session.
 
 **Tasks that introduce functional behaviour.** A task that changes what the system
 does — rather than how it is structured — has become a story. If this is discovered

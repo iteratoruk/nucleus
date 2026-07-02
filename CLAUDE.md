@@ -21,16 +21,19 @@ contexts are re-opened.
 This project uses a strict, documentation-driven, role-based process. `docs/human-contributor-guide.md`
 is the authoritative description; the essentials:
 
-- **One role per session, never mixed.** The four roles are architect, story-author,
-  tdd-implementor, task-implementor, each defined in `docs/roles/`. An architecture question
-  surfacing in a TDD session is *parked and deferred to an architecture session*, not resolved
-  inline. Role drift degrades output — surface it and stop.
+- **One role per session, never mixed.** The five roles are architect, story-author,
+  technical-designer, tdd-implementor, task-implementor, each defined in `docs/roles/`. An
+  architecture question surfacing in a TDD session is *parked and deferred to an architecture
+  session*, not resolved inline; likewise a reusable pattern built in a TDD session is *harvested
+  in a later technical design session*, not documented inline. Role drift degrades output —
+  surface it and stop.
 - **Nothing is built without a story, and no story enters TDD with open questions.** Stories,
   spikes, and tasks are GitHub issues, labelled `story`/`spike`/`task`; the issue number is the
   identifier. Load one with `gh issue view <number> --comments`; create one with `gh issue create`
   (templates in `.github/ISSUE_TEMPLATE/`). Architecture domain models live in `docs/architecture/`
-  and ADRs in `docs/architecture/adrs/` (`ADR-NNN`) — these stay as files. Personas that define
-  stakeholders are in `docs/personas/`.
+  and ADRs in `docs/architecture/adrs/` (`ADR-NNN`); technical design documents — implementation
+  patterns captured from code as guidance for TDD — live in `docs/design/`. These stay as files.
+  Personas that define stakeholders are in `docs/personas/`.
 - **The architecture documents are the authoritative reference for implementation.** Read the
   relevant one before implementing; if it is missing or stale, an architecture session comes first.
 - Commit conventions ([Conventional Commits](https://www.conventionalcommits.org/)): stories
@@ -63,6 +66,10 @@ those three services; see `README.md` for the Docker and Minikube/Skaffold recip
 Everything lives under the `iterator.nucleus` package. Domain areas are their own sub-packages
 (`kafka`, `idempotency`, `audit`, `schedule`); each Kotlin file typically holds a whole slice
 (config, entities, services, DTOs) rather than one-class-per-file.
+
+The conventions below are the compressed, always-loaded form. The full implementation patterns
+for each concern — the canonical example to copy and the ways of getting it wrong — live in
+`docs/design/` and are loaded on demand for the concern under work.
 
 **Persistence.** JPA entities extend `AbstractJpaEntity` (identity-based equals/hashCode on `id`,
 `@Version` optimistic locking, `@CreatedBy`/`@CreatedDate` auditing) or `AbstractMutableJpaEntity`
