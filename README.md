@@ -1,6 +1,6 @@
 # Nucleus
 
-[![Build Status](https://app.travis-ci.com/iteratoruk/nucleus.svg?token=Cm8mrHFVrpV3PidDsXeL&branch=main)](https://app.travis-ci.com/iteratoruk/nucleus)
+[![CI](https://github.com/iteratoruk/nucleus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/iteratoruk/nucleus/actions/workflows/ci.yml)
 
 Nucleus is a banking microservice that provides parameter-driven account feature configuration,
 with account management, scheduled financial processing, and ledger functionality planned. Built
