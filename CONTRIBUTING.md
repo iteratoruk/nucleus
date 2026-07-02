@@ -18,9 +18,7 @@ These messages are used to generate changelogs and help reviewers understand the
 Before submitting a pull request, make sure the full test suite and static checks pass:
 
 ```bash
-./gradlew test
-./gradlew detekt
-./gradlew spotlessCheck
+./gradlew build
 ```
 
 ## Pull Requests
