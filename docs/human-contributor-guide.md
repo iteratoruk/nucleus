@@ -428,11 +428,11 @@ with `gh issue create`.
 Use when: writing new tasks or refining existing tasks.
 
 ```
-@docs/roles/work-unit-author.md
+@docs/roles/task-author.md
 
 ---
 
-We are opening a work unit authoring session to produce a task.
+We are opening a task authoring session to produce a task.
 
 ## The work to be documented
 
@@ -474,11 +474,11 @@ template (`.github/ISSUE_TEMPLATE/task.md`). Create it with `gh issue create`.
 Use when: writing new spikes or refining existing spikes.
 
 ```
-@docs/roles/work-unit-author.md
+@docs/roles/spike-author.md
 
 ---
 
-We are opening a work unit authoring session to produce a spike.
+We are opening a spike authoring session to produce a spike.
 
 ## The question to be investigated
 
