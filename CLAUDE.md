@@ -80,14 +80,15 @@ for each concern — the canonical example to copy and the ways of getting it wr
 camel-to-underscore physical naming, with globally-quoted identifiers.
 
 **Serialization.** Use the single `Serialization.mapper` (also the Spring `ObjectMapper` bean).
-`BigDecimal` serialises as a JSON *string*, not a number. Monetary/rate values are constrained to
-2 or 7 decimal places — use the `toTwoDecimalPlaces`/`toSevenDecimalPlaces` and
-`twoDecimalPlaceViolation`/`sevenDecimalPlaceViolation` helpers in `Extensions.kt`.
+`BigDecimal` serialises as a JSON *string*, not a number. Monetary/rate values are held to
+2 or 7 decimal places — normalise with the `toTwoDecimalPlaces`/`toSevenDecimalPlaces` helpers in
+`Extensions.kt`.
 
-**Errors.** Throw `NucleusValidationException` (400, carries `NucleusViolation`s) or
-`NucleusInternalErrorException` (500, carries a `NucleusErrorCode`). `ErrorHandler`
-(`@ControllerAdvice`) maps these to a `NucleusError` body. Add new error kinds to the
-`NucleusErrorCode` enum. HTTP constants: `NucleusHeaders`, `Uris.API_V1` (`/api/v1`).
+**Errors.** Throw `NucleusInternalErrorException` (500, carries a `NucleusErrorCode`); `ErrorHandler`
+(`@ControllerAdvice`) maps it to a `NucleusError` body. Add new error kinds to the `NucleusErrorCode`
+enum. Client-error (4xx) and request-validation handling do not yet exist and are deliberately left
+open — see `docs/design/error-handling.md`. HTTP constants: `NucleusHeaders`, `Uris.API_V1`
+(`/api/v1`).
 
 **Audit vs Kafka — keep them separate.** Audit events extend `AbstractAuditEvent` and are
 published via `AuditService.publishAuditEvent` (async → `LoggingAuditRepository`). Kafka payloads
