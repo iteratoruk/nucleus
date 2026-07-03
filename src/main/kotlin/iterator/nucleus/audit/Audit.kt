@@ -2,7 +2,6 @@ package iterator.nucleus.audit
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import iterator.nucleus.LoggerDelegate
-import iterator.nucleus.schedule.ScheduledTaskStatus
 import org.slf4j.Logger
 import org.springframework.boot.actuate.audit.AuditEvent
 import org.springframework.boot.actuate.audit.AuditEventRepository
@@ -37,38 +36,14 @@ data class GenericAuditEvent(
   val timestamp: Instant = Instant.now(),
 ) : AbstractAuditEvent(type, principal, data, timestamp)
 
-data class ScheduledTaskStartedEvent(
-  val taskName: String,
-) : AbstractAuditEvent(
-    type = NucleusAuditEventType.SCHEDULED_TASK_STARTED,
-    data =
-      mapOf(
-        "taskName" to taskName,
-      ),
-  )
-
-data class ScheduledTaskFinishedEvent(
-  val taskName: String,
-  val status: ScheduledTaskStatus,
-  val executionDuration: Long,
-  val error: Exception? = null,
-) : AbstractAuditEvent(
-    type = NucleusAuditEventType.SCHEDULED_TASK_FINISHED,
-    data =
-      (
-        error?.let { mapOf<String, Any>("error" to (it.message ?: it.toString())) }
-          ?: emptyMap()
-      ) +
-        mapOf(
-          "taskName" to taskName,
-          "status" to status.name,
-          "executionDuration" to executionDuration,
-        ),
-  )
-
-enum class NucleusAuditEventType {
-  SCHEDULED_TASK_STARTED,
-  SCHEDULED_TASK_FINISHED,
+/**
+ * The type discriminator carried by every audit event and surfaced as the Actuator audit event type
+ * string. It is an interface, not a single enum, so each feature package defines and owns its own
+ * audit event types (as an enum implementing this) without the audit package depending on any peer
+ * package. An enum implementing it satisfies [name] with its constant name.
+ */
+interface NucleusAuditEventType {
+  val name: String
 }
 
 @Component

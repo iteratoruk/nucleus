@@ -6,8 +6,6 @@ import iterator.nucleus.TestingFu.randomBoolean
 import iterator.nucleus.TestingFu.randomWords
 import iterator.nucleus.audit.AbstractAuditEvent
 import iterator.nucleus.audit.AuditService
-import iterator.nucleus.audit.ScheduledTaskFinishedEvent
-import iterator.nucleus.audit.ScheduledTaskStartedEvent
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.data.Offset
 import org.junit.jupiter.api.BeforeEach

@@ -1,9 +1,9 @@
 package iterator.nucleus.schedule
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import iterator.nucleus.audit.AbstractAuditEvent
 import iterator.nucleus.audit.AuditService
-import iterator.nucleus.audit.ScheduledTaskFinishedEvent
-import iterator.nucleus.audit.ScheduledTaskStartedEvent
+import iterator.nucleus.audit.NucleusAuditEventType
 import org.quartz.CronScheduleBuilder
 import org.quartz.Job
 import org.quartz.JobBuilder
@@ -71,6 +71,37 @@ enum class ScheduledTaskStatus {
   SUCCESS,
   FAILURE,
 }
+
+enum class ScheduleAuditEventType : NucleusAuditEventType {
+  SCHEDULED_TASK_STARTED,
+  SCHEDULED_TASK_FINISHED,
+}
+
+data class ScheduledTaskStartedEvent(
+  val taskName: String,
+) : AbstractAuditEvent(
+    type = ScheduleAuditEventType.SCHEDULED_TASK_STARTED,
+    data = mapOf("taskName" to taskName),
+  )
+
+data class ScheduledTaskFinishedEvent(
+  val taskName: String,
+  val status: ScheduledTaskStatus,
+  val executionDuration: Long,
+  val error: Exception? = null,
+) : AbstractAuditEvent(
+    type = ScheduleAuditEventType.SCHEDULED_TASK_FINISHED,
+    data =
+      (
+        error?.let { mapOf<String, Any>("error" to (it.message ?: it.toString())) }
+          ?: emptyMap()
+      ) +
+        mapOf(
+          "taskName" to taskName,
+          "status" to status.name,
+          "executionDuration" to executionDuration,
+        ),
+  )
 
 @Configuration
 class ScheduledTaskConfiguration {

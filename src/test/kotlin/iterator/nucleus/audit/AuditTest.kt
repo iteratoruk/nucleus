@@ -26,7 +26,7 @@ class AuditTest {
     val service = AuditService(publisher)
     val event =
       GenericAuditEvent(
-        type = randomEnumValue<NucleusAuditEventType>(),
+        type = randomEnumValue<TestAuditEventType>(),
         principal = randomAlphabetic(16),
         data = mapOf(randomAlphanumeric(8) to randomAlphanumeric(8)),
         timestamp = randomInstant(),
@@ -44,7 +44,7 @@ class AuditTest {
     // given
     val event =
       GenericAuditEvent(
-        type = randomEnumValue<NucleusAuditEventType>(),
+        type = randomEnumValue<TestAuditEventType>(),
         principal = randomAlphabetic(16),
         data = mapOf(randomAlphanumeric(8) to randomAlphanumeric(8)),
         timestamp = randomInstant(),
@@ -77,4 +77,9 @@ class AuditTest {
   }
 
   private inline fun <reified T : Enum<T>> randomEnumValue(): T = enumValues<T>()[Random.nextInt(enumValues<T>().size)]
+}
+
+private enum class TestAuditEventType : NucleusAuditEventType {
+  ALPHA,
+  BETA,
 }
