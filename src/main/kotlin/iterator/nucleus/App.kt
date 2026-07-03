@@ -3,12 +3,14 @@ package iterator.nucleus
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.core.JsonToken
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
+import com.fasterxml.jackson.databind.jsontype.TypeSerializer
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.ser.std.StdSerializer
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -65,6 +67,22 @@ class BigDecimalToStringSerializer : StdSerializer<BigDecimal>(BigDecimal::class
     provider: SerializerProvider,
   ) {
     gen.writeString(value.toString())
+  }
+
+  // Support polymorphic default typing, which the Redis L2-cache codec activates. Without this a
+  // BigDecimal serialised under an active TypeSerializer fails with "Type id handling not
+  // implemented". This override is only invoked when default typing is in effect, so the plain
+  // HTTP/Kafka wire format (which uses no typing) is unaffected.
+  override fun serializeWithType(
+    value: BigDecimal,
+    gen: JsonGenerator,
+    provider: SerializerProvider,
+    typeSer: TypeSerializer,
+  ) {
+    val typeId = typeSer.typeId(value, JsonToken.VALUE_STRING)
+    typeSer.writeTypePrefix(gen, typeId)
+    serialize(value, gen, provider)
+    typeSer.writeTypeSuffix(gen, typeId)
   }
 }
 
