@@ -9,9 +9,11 @@ and a status set by `@ResponseStatus`. The boundary of this document is delibera
 covers only what exists in the skeleton, which is one exception type mapped to one status
 (`NucleusInternalErrorException` → 500). It does not cover client-error (4xx) handling or
 validation, because — as recorded under Findings — none of that machinery currently exists in
-`src/`, notwithstanding CLAUDE.md's description of it. Where a failure is domain- or
-concern-specific (idempotency, persistence), the *decision to throw* belongs to that concern; the
-*translation to a response* belongs here.
+`src/`; CLAUDE.md's "Errors" paragraph now records that 4xx/validation is deliberately left open,
+so document and code agree. Where a failure is domain- or concern-specific (idempotency,
+persistence), the *decision to throw* belongs to that concern; the *translation to a response*
+belongs here. This narrowness is about the *HTTP error-mapping* seam specifically: a control-flow
+exception that never reaches a controller (see the catalogue pattern below) is outside its scope.
 
 ## Vocabulary
 
@@ -113,35 +115,58 @@ mapping fragments, two packages can invent overlapping codes, and the set of thi
 told went wrong stops being knowable in one place. The failure vocabulary must have a single owner,
 and that owner must sit where every package can depend on it without creating a cycle.
 
-**Approach:** All Nucleus exception types, the `NucleusError` DTO, and the `NucleusErrorCode` enum
+**Approach:** All HTTP-mapped exception types — those that travel through a controller and become a
+`NucleusError` via the advice — together with the `NucleusError` DTO and the `NucleusErrorCode` enum
 live in the top-level `iterator.nucleus` package (in `ErrorHandler.kt`), alongside the single
 `@ControllerAdvice`. Sub-packages (`idempotency`, `kafka`, `schedule`, …) *reference* these
 top-level types — they throw `NucleusInternalErrorException` with a `NucleusErrorCode` — but never
-define their own exception hierarchy or a second advice. `IdempotencyService` is the model: it
+define their own HTTP-mapped exception type or a second advice. `IdempotencyService` is the model: it
 imports `NucleusInternalErrorException`/`NucleusErrorCode` from the parent package and throws them; it
-defines no exception of its own. Because the error-handling types live in the top-level package and
-depend on nothing domain-specific, every package may throw them and none creates a dependency cycle.
+defines no mapped exception of its own. Because the error-handling types live in the top-level package
+and depend on nothing domain-specific, every package may throw them and none creates a dependency
+cycle.
+
+The isolation is not a blanket "all exceptions live in the top-level package" rule, and stating it
+that way would be wrong. It applies only to *HTTP-mapped* exceptions. A purely internal control-flow
+exception that never reaches a controller or the advice legitimately lives in its own feature package:
+`ScheduledTaskException` (`schedule/Schedule.kt`) is the standing example — a `ScheduledTask` throws it
+to signal failure and control whether Quartz refires, and `QuartzScheduledJob` catches it in the same
+package, converting it to a Quartz `JobExecutionException`. It has no `NucleusErrorCode`, is never
+serialised into a `NucleusError`, and correctly stays out of the top-level catalogue. What guarantees
+the catalogue's single ownership is therefore not a rule about where exceptions may be declared, but
+two structural facts: the `@ControllerAdvice` is the sole error-mapping seam, and the error-handling
+types are a dependency leaf.
 
 **Reference implementation:** `NucleusInternalErrorException`, `NucleusError`, `NucleusErrorCode`, and
 `ErrorHandler`, all in `src/main/kotlin/iterator/nucleus/ErrorHandler.kt` (the root package); the
-consuming throw site in `idempotency/Idempotency.kt`.
+consuming throw site in `idempotency/Idempotency.kt`. The counter-example — an internal exception that
+correctly resides in a sub-package — is `ScheduledTaskException` in `schedule/Schedule.kt`.
 
 **Rules:**
-- Define exception types and error codes only in the top-level package. A sub-package throws the
-  shared types; it must not declare its own exception classes or a second `@ControllerAdvice`.
+- Define HTTP-mapped exception types and error codes only in the top-level package. A sub-package
+  throws the shared mapped types; it must not declare its own mapped exception class or a second
+  `@ControllerAdvice`. Internal control-flow exceptions that never reach the advice are exempt and
+  belong with the concern that throws and catches them.
 - The error-handling types must depend on no peer or sub-package — they are a leaf that everything
   may reference and that references nothing domain-specific.
-- Enforce both directions with an ArchUnit test: no exception/`@ControllerAdvice` definitions outside
-  the top-level package, and no dependency from the error-handling types onto any `iterator.nucleus.*`
-  sub-package (the test does not yet exist — see Findings).
+- Both directions are enforced by ArchUnit in `PackageDependencyRulesTest`: the
+  `controller advice must live only in the top-level package` test pins the single mapping seam to
+  the exactly-top-level `iterator.nucleus` package, and the
+  `the top-level package must not depend on any feature package` test keeps the error catalogue a
+  leaf by forbidding any dependency from the top-level package onto `audit`, `kafka`, `idempotency`,
+  or `schedule`. Together they hold the catalogue in one place without needing a blanket
+  where-exceptions-may-live rule.
 
 **Pitfalls:**
-- A sub-package defining a local exception and its own handler splinters the catalogue and the mapping
-  seam; the closed `NucleusErrorCode` vocabulary loses its meaning the moment a second code source
-  exists.
+- A sub-package defining a local *mapped* exception and its own handler splinters the catalogue and
+  the mapping seam; the closed `NucleusErrorCode` vocabulary loses its meaning the moment a second
+  code source exists. (This is what the single-advice ArchUnit rule prevents.)
 - Letting an error-handling type import a sub-package type to enrich an error with domain detail
   inverts the dependency and risks a cycle. Carry such detail as data on the exception, not as a typed
-  dependency on the domain package.
+  dependency on the domain package. (This is what the top-level-is-a-leaf ArchUnit rule prevents.)
+- Conversely, hoisting a genuinely internal control-flow exception into the top-level package merely
+  to satisfy a misremembered "all exceptions live at the top" rule couples the catalogue to a
+  concern's private failure signalling for no benefit.
 
 ## Extension Points
 
@@ -167,10 +192,10 @@ the reference example. It composes with **serialization** (`docs/design/serializ
 itself triggered by a Jackson (de)serialisation failure. It does not depend on any domain concept
 and serves no single architecture document; it is a cross-cutting infrastructure seam.
 
-CLAUDE.md's "Errors" convention paragraph is the compressed headline for this document. That
-paragraph currently describes machinery beyond what exists in code (see Findings); once the
-divergence is resolved, this document is the authoritative full statement and CLAUDE.md should point
-to it.
+CLAUDE.md's "Errors" convention paragraph is the compressed headline for this document. It now
+describes only `NucleusInternalErrorException` → 500 and records that 4xx/validation handling is
+deliberately left open, pointing here for the full statement; the two are in agreement, and this
+document is the authoritative full statement.
 
 ## ADR References and Candidates
 
@@ -183,41 +208,55 @@ alternatives and are ADR candidates:
 - **A closed `NucleusErrorCode` enum as the machine-readable error vocabulary.** The alternative —
   open string codes, or relying on HTTP status alone — is foreclosed. Worth an ADR because it fixes
   the client's failure contract as an additive, enumerated set.
-- **The top-level package owns the exception catalogue and the single error-mapping seam; sub-packages
-  reference but never define error types.** Worth an ADR because it fixes a package-dependency
-  direction — everything may depend on the error catalogue, the catalogue depends on nothing
-  domain-specific — that an ArchUnit test should enforce.
+- **The top-level package owns the HTTP-mapped exception catalogue and the single error-mapping seam;
+  sub-packages reference but never define mapped error types.** Worth an ADR because it fixes a
+  package-dependency direction — everything may depend on the error catalogue, the catalogue depends on
+  nothing domain-specific — now enforced by the `controller advice must live only in the top-level
+  package` and `the top-level package must not depend on any feature package` tests in
+  `PackageDependencyRulesTest`. The ADR would also record the scoping decision: the constraint binds
+  HTTP-mapped exceptions, not internal control-flow exceptions.
 
 ## Open Questions and Findings
 
-**The skeleton has no client-error (4xx) handling at all.** This is the dominant finding and it is a
-documentation-versus-code divergence, not a pattern to write. CLAUDE.md's "Errors" convention
-describes a `NucleusValidationException` (400, carrying `NucleusViolation` values), a bean-validation
-→ `NucleusValidationException` path, and the `twoDecimalPlaceViolation` /
-`sevenDecimalPlaceViolation` helpers in `Extensions.kt`. **None of this exists in `src/`.**
-`ErrorHandler` registers exactly one `@ExceptionHandler`, for `NucleusInternalErrorException` (500).
-There is no `NucleusValidationException` type, no `NucleusViolation` type, no validation handler, and
-no 400 path. The domain reset removed them. The consequence is concrete: any unhandled exception —
-including bad client input — falls through to Spring's default error handling and never becomes a
-`NucleusError`.
+**The skeleton has no client-error (4xx) handling at all.** This remains the dominant finding, though
+it is no longer a documentation-versus-code divergence: it is a deliberate gap. `ErrorHandler`
+registers exactly one `@ExceptionHandler`, for `NucleusInternalErrorException` (500). There is no
+`NucleusValidationException` type, no `NucleusViolation` type, no bean-validation → validation-exception
+path, no `twoDecimalPlaceViolation` / `sevenDecimalPlaceViolation` helpers in `Extensions.kt`, and no
+400 path anywhere in `src/`. The domain reset removed them. The consequence is concrete: any unhandled
+exception — including bad client input — falls through to Spring's default error handling and never
+becomes a `NucleusError`.
 
 This document deliberately does **not** invent the validation pattern. Per the technical-designer
 rule, a pattern is captured only after it exists in code. The validation / `NucleusViolation` path
 must be re-grown in a TDD session (against its owning architecture) and harvested afterward, at which
 point this document gains a "Client validation error" pattern under Patterns and the second Extension
-Point above is realised. CLAUDE.md's "Errors" paragraph has since been corrected to describe only
-`NucleusInternalErrorException` and to record that 4xx/validation handling is deliberately left open,
-so it no longer overstates the skeleton; the validation path itself still has to be built, against its
+Point above is realised. CLAUDE.md's "Errors" paragraph now describes only
+`NucleusInternalErrorException` and records that 4xx/validation handling is deliberately left open, so
+it no longer overstates the skeleton; the validation path itself still has to be built, against its
 owning architecture, before it is documented here. The shape of that solution must not be pre-designed
 — neither this document nor CLAUDE.md should presume a `NucleusValidationException`/`NucleusViolation`
 form.
 
-**The catalogue-isolation rule is convention, not yet enforced.** All exception types living in the
-top-level package, and the error-handling types depending on no sub-package, holds in the skeleton but
-nothing prevents its violation. An ArchUnit test enforcing it — no exception/`@ControllerAdvice`
-definitions outside `iterator.nucleus` (root), and no error-handling → sub-package dependency — should
-be added in a task session (a behaviour-preserving test addition). Until then the rule is guidance
-only.
+**The catalogue-isolation rule is now enforced.** The earlier gap — that nothing prevented a
+sub-package from declaring its own advice or the error catalogue from acquiring a domain dependency —
+is closed. `PackageDependencyRulesTest` carries two ArchUnit rules that hold the seam: `controller
+advice must live only in the top-level package` requires every `@ControllerAdvice` to reside in the
+exactly-top-level `iterator.nucleus` package, and `the top-level package must not depend on any feature
+package` forbids the top-level package (where the error catalogue lives) from depending on `audit`,
+`kafka`, `idempotency`, or `schedule`. There is deliberately *no* rule declaring that all exception
+types must live at the top level — that would wrongly capture internal control-flow exceptions such as
+`ScheduledTaskException`, which never reach the advice.
+
+**Forward note (do not build now).** Today's leaf rule enforces catalogue isolation indirectly: it
+keeps the top-level package free of domain dependencies rather than naming the HTTP-mapped exceptions
+directly, so it cannot by itself say "a mapped exception must not be declared in a sub-package". When
+the deferred 4xx/validation path is grown, the HTTP-mapped exceptions may come to share a sealed base
+type; at that point a precise rule — "types assignable to the sealed HTTP-mapped-exception base reside
+only in `iterator.nucleus`" — becomes expressible, sharper than the current leaf rule and able to
+distinguish mapped exceptions from internal control-flow ones by type rather than by package
+dependency. This is noted only so the option is not forgotten; it is not to be designed until that path
+exists in code.
 
 **Secondary:** `NucleusError` exposes only `{ code, message }`. If clients come to need field-level
 detail, that is a shape change to the response DTO to be decided when the client-error path is built —

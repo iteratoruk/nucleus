@@ -9,8 +9,9 @@ document covers the *mechanism* of raising and routing an audit event — the ty
 hierarchy, the publish path, and the repository sink — not *what* must be audited, how
 long records are retained, or what `principal` means. Those are domain and operational
 concerns and belong to a forthcoming audit architecture document (see Open Questions).
-It also does not cover Kafka messaging, which shares a fan-out publisher but is a
-separate concern with a separate lifecycle (see `docs/design/messaging.md`).
+It also does not cover Kafka messaging, which is a separate concern with a separate
+lifecycle (see `docs/design/messaging.md`); the two share a base-type-separation rule but
+no longer share a publisher.
 
 ## Vocabulary
 
@@ -18,15 +19,23 @@ separate concern with a separate lifecycle (see `docs/design/messaging.md`).
   Spring Boot Actuator `AuditApplicationEvent`, constructed from `(timestamp, principal,
   type.name, data)`. Because it is an `AuditApplicationEvent`, publishing it onto the
   Spring application event bus triggers Actuator's built-in audit listener.
-- **`NucleusAuditEventType`** — a closed enum enumerating the vocabulary of auditable
-  happenings. Today: `SCHEDULED_TASK_STARTED`, `SCHEDULED_TASK_FINISHED`. Its `name` is
-  the Actuator audit event *type* string.
-- **`GenericAuditEvent`** — a general-purpose concrete event carrying an explicit
-  `type`, optional `principal`, and a free `data` map, for happenings that do not warrant
-  their own class.
+- **`NucleusAuditEventType`** — an *interface* (declaring `val name: String`) that is the
+  type discriminator every audit event carries. It is deliberately not a single enum: each
+  feature package defines its own enum implementing it and so owns its own vocabulary of
+  auditable happenings, while the audit package depends on no feature package. An enum
+  implementing it satisfies `name` with its constant name, which is the Actuator audit event
+  *type* string.
+- **`ScheduleAuditEventType`** — the scheduling concern's enum implementing
+  `NucleusAuditEventType`, living in the `schedule` package. Its constants
+  `SCHEDULED_TASK_STARTED` and `SCHEDULED_TASK_FINISHED` are the audit type strings for
+  scheduled-job execution.
+- **`GenericAuditEvent`** — a general-purpose concrete event (in the audit package) carrying
+  an explicit `type`, optional `principal`, and a free `data` map, for happenings that do not
+  warrant their own class.
 - **`ScheduledTaskStartedEvent` / `ScheduledTaskFinishedEvent`** — purpose-built concrete
-  events for the scheduling concern; each fixes its own `type` and builds its own `data`
-  map from its constructor arguments.
+  events for the scheduling concern, defined in the `schedule` package (not audit); each
+  fixes its own `type` (a `ScheduleAuditEventType` constant) and builds its own `data` map
+  from its constructor arguments.
 - **`AuditService`** — a `@Service` with one method, `publishAuditEvent`, annotated
   `@Async`. It publishes the event onto the application event bus and writes nothing
   itself.
@@ -63,17 +72,19 @@ for a purpose-built class when the same event is raised from more than one site 
 `data` map has a fixed, non-trivial shape worth naming; use `GenericAuditEvent` for one-off
 or low-structure events.
 
-**Reference implementation:** `iterator.nucleus.audit.AbstractAuditEvent` and its subclasses
-`GenericAuditEvent` and `ScheduledTaskFinishedEvent` in `Audit.kt`. The latter is the model
-for a purpose-built event, including how it folds an optional field into the map
-(`error?.let { ... } ?: emptyMap()` merged with the always-present entries).
+**Reference implementation:** `iterator.nucleus.audit.AbstractAuditEvent` and
+`GenericAuditEvent` in `Audit.kt`; the purpose-built subclass `ScheduledTaskFinishedEvent` in
+`iterator.nucleus.schedule.Schedule.kt`. The latter is the model for a purpose-built event,
+including how it folds an optional field into the map (`error?.let { ... } ?: emptyMap()`
+merged with the always-present entries).
 
 **Rules:**
 - A significant business/system happening is *audited* — raised as a typed
   `AbstractAuditEvent` — not logged ad hoc. Logging is for diagnostics; see
   `docs/design/logging.md` for that boundary.
-- A new kind of happening requires a new `NucleusAuditEventType` value. The enum is the
-  authoritative vocabulary; do not overload an existing type to mean two things.
+- A new kind of happening requires a new `NucleusAuditEventType` value — a constant on the
+  feature package's own enum implementing the interface. That enum is the authoritative
+  vocabulary for its package; do not overload an existing type to mean two things.
 - The `data` map must be JSON-serialisable by the shared `ObjectMapper` (see
   `docs/design/serialization.md`) — it is serialised whole by the sink. Put primitives,
   strings, enum `.name` values, and plain maps in it, not live domain aggregates or
@@ -147,44 +158,52 @@ class and no producer changes.
 - The `getLog()` indirection in `LoggingAuditRepository` exists solely so tests can inject a mock
   logger and assert on emitted audit JSON; it is not a general logging pattern to copy.
 
-### Pattern: The audit package owns every audit event definition
+### Pattern: The feature package owns its own audit event definitions
 
-**Problem:** Every audit event must carry a `NucleusAuditEventType`, and both that enum and
-`AbstractAuditEvent` live in the audit package. If a publishing module (say `schedule`) defined its
-own audit event subclasses, that module would depend on the audit package for the base type and the
-enum — and the audit machinery, which must know the concrete event, would tend to reach back for the
-module's types, producing a cyclic package dependency. The event definitions have to sit on one side
-of that boundary.
+**Problem:** Every audit event must carry a type discriminator and extend a base event class. If that
+discriminator were a single global enum in the audit package, and every purpose-built event class also
+lived there, the audit package would have to reach back into each feature's domain — a
+`ScheduledTaskFinishedEvent` references the schedule concern's `ScheduledTaskStatus` — producing a
+cyclic package dependency between audit and the very modules it is meant to serve. The event
+definitions and their vocabulary have to sit on the feature side of that boundary, not the audit side.
 
-**Approach:** Define all audit event classes in the audit package (`Audit.kt`), even for happenings
-raised by other modules. `ScheduledTaskStartedEvent`/`ScheduledTaskFinishedEvent` live in `audit`, not
-in `schedule`, although `schedule` is what raises them. A publishing module depends on the audit
-package to obtain the event class and `AuditService`, and raises it; it does not define events. This
-keeps every event definition in one catalogue and the dependency direction one-way (publishers →
-audit).
+**Approach:** The audit package exports only the generic machinery — `AuditService`,
+`AbstractAuditEvent`, and the `NucleusAuditEventType` interface — and depends on no feature package.
+Each feature package that audits defines *its own* enum implementing `NucleusAuditEventType` and *its
+own* `AbstractAuditEvent` subclasses, in its own file. The scheduling concern is the reference: the
+`schedule` package declares `ScheduleAuditEventType` (implementing `NucleusAuditEventType`) and the
+`ScheduledTaskStartedEvent` / `ScheduledTaskFinishedEvent` classes that extend `AbstractAuditEvent`,
+all in `Schedule.kt`. A feature depends on `audit` to obtain the base class, the interface, and
+`AuditService`; `audit` depends on nothing feature-specific. The dependency is strictly one-way
+(feature → audit), so no cycle can form, and the feature is free to reference its own domain types
+(such as `ScheduledTaskStatus`) inside its own event classes.
 
-**Reference implementation:** `ScheduledTaskStartedEvent` / `ScheduledTaskFinishedEvent` in
-`iterator.nucleus.audit.Audit.kt`, raised from `QuartzScheduledJob` in the `schedule` package.
+**Reference implementation:** `ScheduleAuditEventType`, `ScheduledTaskStartedEvent`, and
+`ScheduledTaskFinishedEvent` in `iterator.nucleus.schedule.Schedule.kt`, raised from
+`QuartzScheduledJob` in the same package; the exported machinery in `iterator.nucleus.audit.Audit.kt`.
 
 **Rules:**
-- Define a new audit event in the audit package, never in the module that raises it. The raising
-  module imports it.
-- The audit package must not depend on any peer or domain sub-package — it is a catalogue that others
-  depend on. Enforce with an ArchUnit test (does not yet exist, and would currently fail — see
-  Findings).
+- Define a new audit event, and the enum constant that types it, in the feature package that raises
+  it — never in the audit package. Implement `NucleusAuditEventType` for the type and extend
+  `AbstractAuditEvent` for the event.
+- The audit package must not depend on any peer or domain sub-package — it exports machinery that
+  others depend on. This is enforced by the ArchUnit test `audit must not depend on peer feature
+  packages` in `PackageDependencyRulesTest`.
 
 **Pitfalls:**
-- Defining an audit event beside the code that raises it feels natural but inverts the dependency and
-  forms a cycle the moment the event references audit's `NucleusAuditEventType` (which it must).
+- Reaching for a single global `NucleusAuditEventType` enum, or a central catalogue of every event
+  class, in the audit package. That was the earlier shape and it forced audit to depend on feature
+  domain types, forming a cycle; the interface-per-feature split exists precisely to prevent it.
 
 ## Extension Points
 
-To audit a new happening: add a value to `NucleusAuditEventType`; then either raise a
+To audit a new happening: in the feature package, add a constant to that package's enum implementing
+`NucleusAuditEventType` (or create the enum if the package has none yet); then either raise a
 `GenericAuditEvent` with that type and a JSON-serialisable `data` map at the call site, or — if
 the event recurs or has a fixed payload shape — add a concrete data class extending
 `AbstractAuditEvent` that fixes the type and builds its own `data` map (copy
-`ScheduledTaskFinishedEvent`). Publish it through `AuditService.publishAuditEvent`. Nothing else
-changes: the listener routing and the sink are already in place.
+`ScheduledTaskFinishedEvent`). Publish it through `AuditService.publishAuditEvent`. Nothing in the
+audit package changes: the interface, the listener routing, and the sink are already in place.
 
 To change where audit events land, provide an alternative `AuditEventRepository` bean. The
 existing `LoggingAuditRepository` is the starter sink, not a fixture.
@@ -201,10 +220,11 @@ existing `LoggingAuditRepository` is the starter sink, not a fixture.
   payloads (`OutboundEvent`) must NOT extend `AbstractAuditEvent`.** Audit events and Kafka
   messages are different things with different lifecycles — audit is async, best-effort,
   fire-and-forget onto the application event bus; a Kafka message is a plain Jackson POJO sent
-  on transaction commit. The shared `KafkaOutboundEventPublisher` fans out to *both* an audit
-  event and a Kafka send, which is precisely why the payload types must not be conflated. The
-  full treatment of that fan-out is in `docs/design/messaging.md`; the rule is stated here
-  because getting it wrong corrupts the audit vocabulary.
+  on transaction commit. The base-type separation is the enduring rule; the Kafka publisher no
+  longer fans out to an audit event on every message (that fan-out was removed in the messaging
+  work), so audit is not driven by Kafka sends at all. The rule is stated here because getting
+  it wrong conflates two distinct lifecycles and corrupts the audit vocabulary; the messaging
+  side is in `docs/design/messaging.md`.
 - **Candidate CLAUDE.md edit:** the conventions section already carries the one-line audit/Kafka
   separation rule; this document is its authoritative expansion.
 
@@ -217,8 +237,9 @@ No ADRs are written yet. Candidates embodied in these patterns:
 - Async, fire-and-forget audit publication (audit is not transactional with the business write).
 - Log-as-audit-sink: `LoggingAuditRepository` as the initial `AuditEventRepository`, deferring a
   persistent sink and any read/query path.
-- The audit package as the single owner of all audit event definitions, with a one-way publisher →
-  audit dependency, rather than events defined beside their producers.
+- Making `NucleusAuditEventType` an interface and having each feature package own its own audit
+  event types and classes, with a strictly one-way feature → audit dependency (enforced by
+  ArchUnit), rather than a single global enum and a central catalogue in the audit package.
 
 ## Open Questions and Findings
 
@@ -230,24 +251,10 @@ No ADRs are written yet. Candidates embodied in these patterns:
 - **The write-only sink is provisional.** `find` is unsupported and audit output is log lines
   only; there is no persistence and no query surface. This is adequate for the skeleton but is an
   architecture decision awaiting the document above, not a settled end state.
-- **The audit package currently violates its own no-peer-dependency rule.** `ScheduledTaskFinishedEvent`
-  references `ScheduledTaskStatus` from the `schedule` package (`Audit.kt` imports
-  `iterator.nucleus.schedule.ScheduledTaskStatus`), while `schedule` depends on `audit` to raise its
-  events — a genuine bidirectional package cycle. Two ways out, not yet chosen, presented with their
-  trade-offs rather than canonised:
-  1. **Genericise the audit seam** so publishers need not depend on the audit package at all: a module
-     publishes a plain Spring application event (or a `GenericAuditEvent` assembled from primitives and
-     strings), and the audit module observes and processes it. Event-*shape* knowledge leaves the
-     publishers; the cycle cannot form because a publisher depends only on Spring's
-     `ApplicationEventPublisher`. Trade-off: gives up the typed, purpose-built event classes and their
-     compile-time shape, and moves the enum/type coupling to the audit module's own listener.
-  2. **Make audit a fully self-contained catalogue** of every publishable event, and break the peer
-     dependency by not referencing `ScheduledTaskStatus` at all — store the status as its `.name`
-     string, or relocate the status type to the parent (or audit) package. Trade-off: the audit
-     catalogue must then carry knowledge of every domain's events, increasing coupling in the other
-     direction (audit needs to know about domains), though without a compile-time dependency on their
-     packages.
-  The choice is an architecture decision. An ArchUnit test forbidding `audit` → peer-package
-  dependencies should be added once it is made; today that test would fail on the existing
-  `ScheduledTaskStatus` reference. Recorded here, not resolved. Scheduling is the other half of the
-  cycle — see the corresponding finding in `docs/design/scheduling.md`.
+- **The audit↔schedule cycle is resolved** (previously an open finding). `NucleusAuditEventType` is
+  now an interface exported by the audit package, and each feature package owns its own enum and event
+  classes: `ScheduleAuditEventType`, `ScheduledTaskStartedEvent`, and `ScheduledTaskFinishedEvent`
+  live in the `schedule` package, so `ScheduledTaskFinishedEvent` can reference `ScheduledTaskStatus`
+  without the audit package ever depending on `schedule`. The dependency is strictly one-way
+  (schedule → audit). The ArchUnit test `audit must not depend on peer feature packages` in
+  `PackageDependencyRulesTest` now enforces it.

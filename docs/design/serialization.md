@@ -8,9 +8,10 @@ values — money and rates — that flow across those boundaries. Everything han
 request and response bodies, Kafka payloads, idempotency-key response storage, and audit logging.
 The document also owns the two decimal-scale normalisation helpers, because scale is a serialisation
 concern here — a `BigDecimal` is written to the wire as a string and its scale is part of what the
-consumer sees. It does not cover error mapping (see `docs/design/error-handling.md`), the Kafka
-serdes machinery that merely consumes the mapper (`docs/design/messaging.md`), or the Redis L2 cache
-codec (see the Finding below — the mapper is not wired into it).
+consumer sees. It does cover the Redis L2-cache codec, which now serialises Hibernate's second-level
+cache with a JSON codec built from a *copy* of that same mapper (see the pattern below). It does not
+cover error mapping (see `docs/design/error-handling.md`) or the Kafka serdes machinery that merely
+consumes the mapper (`docs/design/messaging.md`).
 
 ## Vocabulary
 
@@ -20,7 +21,11 @@ codec (see the Finding below — the mapper is not wired into it).
 `BigDecimalFromStringDeserializer` (`App.kt`) are the custom Jackson `StdSerializer`/`StdDeserializer`
 registered on the mapper via a `SimpleModule` to force the string wire format for `BigDecimal`.
 `BigDecimal.toTwoDecimalPlaces()` and `BigDecimal.toSevenDecimalPlaces()` (`Extensions.kt`) are the
-scale-normalisation extension functions. `Uris.API_V1` (`"/api/v1"`) and `NucleusHeaders`
+scale-normalisation extension functions. `JsonRedissonRegionFactory` (`JsonRedissonRegionFactory.kt`)
+is the `RedissonRegionFactory` subclass — wired as the Hibernate `factory_class` in `application.yml`
+— that installs a Redisson `JsonJacksonCodec` built from a copy of `Serialization.mapper` as the
+second-level-cache codec; its `buildConfig(path)` companion function performs the codec wiring in
+isolation. `Uris.API_V1` (`"/api/v1"`) and `NucleusHeaders`
 (`CLIENT_ID = "X-Client-ID"`, `IDEMPOTENCY_KEY = "Idempotency-Key"`) are the shared HTTP-vocabulary
 constants. These are all infrastructural; none carries a domain concept requiring an architecture
 reference.
@@ -72,6 +77,44 @@ ObjectMapper` with different configuration; there must be one. Registering an ad
 module by mutating the shared mapper from a call site is also wrong — module registration belongs in
 the `Serialization` object where the full configuration is visible in one place.
 
+### Pattern: JSON codec for the Redis L2 cache
+
+**Problem:** The Hibernate second-level cache is backed by Redisson. Left unconfigured, Redisson
+serialises cached entries with its default codec, which falls back to JDK/Java serialization — brittle
+across class-shape changes and a portability and security liability. The cache format should instead
+be the same explicit JSON that the rest of the application already produces, driven by the one
+canonical mapper. But the mapper cannot simply be handed to Redisson unchanged: Redisson's
+`JsonJacksonCodec` *mutates* the mapper it is given — it activates polymorphic default typing (which
+Hibernate's internal cache structures need in order to round-trip) and adjusts visibility. If that
+mutation landed on the shared `Serialization.mapper`, default typing would leak into every HTTP, Kafka,
+and idempotency payload, changing the wire format globally.
+
+**Approach:** `JsonRedissonRegionFactory` extends `RedissonRegionFactory` and is registered as the
+Hibernate `hibernate.cache.region.factory_class` in `application.yml`. It overrides
+`createRedissonClient` to build its `Config` through the companion function `buildConfig(path)`, which
+loads `redisson.yml` from the classpath (preserving the base factory's config source and
+`${VAR:-default}` substitution) and then sets `config.codec = JsonJacksonCodec(Serialization.mapper.copy())`.
+The codec is constructed from `Serialization.mapper.copy()`, never the shared instance — the copy
+absorbs the typing/visibility mutation so the application-wide mapper stays untouched. Extracting the
+wiring into `buildConfig` lets a test assert the codec is installed without opening a connection to
+Redis.
+
+**Reference implementation:** `JsonRedissonRegionFactory.kt` — the class, `createRedissonClient`, and
+the `buildConfig` companion function. Configuration wiring: `application.yml`
+(`hibernate.cache.region.factory_class: iterator.nucleus.JsonRedissonRegionFactory`) and `redisson.yml`
+(the `singleServerConfig` address the factory loads).
+
+**Rules:** The L2-cache codec is built from a `copy()` of `Serialization.mapper` — never the shared
+instance — because `JsonJacksonCodec` mutates its mapper. Keep the codec-wiring in `buildConfig` so it
+stays testable without a live Redis. Any change to how the cache serialises goes here, not by mutating
+the shared mapper.
+
+**Pitfalls:** Passing `Serialization.mapper` directly to `JsonJacksonCodec` (dropping the `.copy()`)
+silently activates polymorphic default typing on the one application-wide mapper, corrupting the
+HTTP/Kafka/idempotency wire format for the whole process. Inlining the codec setup into
+`createRedissonClient` (rather than `buildConfig`) re-couples the wiring to a live Redisson client and
+loses the isolated test seam.
+
 ### Pattern: BigDecimal on the wire is a string, not a number
 
 **Problem:** Monetary and rate values are `BigDecimal` for exactness. JSON numbers are not exact: a
@@ -86,9 +129,15 @@ the value is emitted as a quoted JSON string carrying its exact digits and scale
 `BigDecimalFromStringDeserializer.deserialize` reads `p.text` and constructs `BigDecimal(p.text)`,
 catching `NumberFormatException` and rethrowing it as `ctxt.weirdStringException(...)` so malformed
 input surfaces as a Jackson deserialization error rather than an uncaught runtime exception.
+`BigDecimalToStringSerializer` additionally overrides `serializeWithType`, which Jackson invokes only
+when polymorphic default typing is active — the case for the Redis L2-cache codec (see the previous
+pattern). The override writes the type prefix, delegates to `serialize` for the string body, then
+writes the type suffix; without it, caching an entity that carries a `BigDecimal` field fails, because
+`BigDecimal` is a non-final type for which the active `TypeSerializer` tries to emit a type id.
 
-**Reference implementation:** `App.kt` — `BigDecimalToStringSerializer`, `BigDecimalFromStringDeserializer`,
-and their registration in `object Serialization`.
+**Reference implementation:** `App.kt` — `BigDecimalToStringSerializer` (`serialize` and
+`serializeWithType`), `BigDecimalFromStringDeserializer`, and their registration in
+`object Serialization`.
 
 **Rules:** All monetary and rate values are `BigDecimal` and therefore serialise as strings — this is
 automatic once a value is a `BigDecimal` and the shared mapper is used. Do not override the field with
@@ -101,7 +150,12 @@ number for a `BigDecimal` field is sending the wrong wire type.
 `BigDecimal` reverts to a JSON number and the precision guarantee is silently gone — the tests still
 pass locally because the JVM's `BigDecimal` reader is exact; the corruption only appears in a
 JavaScript client. Assuming `p.text` is always parseable and skipping the `NumberFormatException`
-handling turns bad client input into a 500 instead of a clean deserialization error.
+handling turns bad client input into a 500 instead of a clean deserialization error. A custom Jackson
+serializer registered on the shared mapper that overrides only `serialize` and not `serializeWithType`
+works on the plain wire but throws `InvalidDefinitionException: Type id handling not implemented` the
+moment its type is serialised under the L2-cache codec's polymorphic typing — so any such serializer
+for a non-final type must also override `serializeWithType`, exactly as
+`BigDecimalToStringSerializer.serializeWithType` does.
 
 ### Pattern: Normalise decimal scale before it crosses a boundary
 
@@ -169,9 +223,10 @@ concern's client-id audit filter (`docs/design/persistence.md`) and `IDEMPOTENCY
 
 CLAUDE.md already carries the compressed headline of this concern ("Use the single
 `Serialization.mapper` … `BigDecimal` serialises as a JSON string … `toTwoDecimalPlaces`/
-`toSevenDecimalPlaces`"). No new CLAUDE.md edit is proposed for the patterns themselves; but see the
-Findings — CLAUDE.md's reference to `twoDecimalPlaceViolation`/`sevenDecimalPlaceViolation` describes
-code that does not exist and should be corrected once the validation concern is settled.
+`toSevenDecimalPlaces`"). It has since been extended with the Redis L2-cache codec and the
+`serializeWithType` requirement, and its earlier reference to the non-existent
+`twoDecimalPlaceViolation`/`sevenDecimalPlaceViolation` helpers has been removed — the validation path
+itself remains deferred (see Findings).
 
 ## ADR References and Candidates
 
@@ -189,18 +244,6 @@ upward when written; not written here):
   (`HALF_UP` in particular) and any other scale are foreclosed for monetary and rate values.
 
 ## Open Questions and Findings
-
-**The Redis L2 cache configures no codec — a known, serious omission slated for correction.**
-`redisson.yml` contains only a `singleServerConfig` address and configures no codec, so the Hibernate
-second-level cache backed by Redisson falls back to Redisson's default codec. That default is
-JDK/Java serialization unless a lighter codec is present on the classpath and explicitly selected —
-and relying on Java serialization for the L2 cache is a failure waiting to happen: brittle across
-class-shape changes, and a portability and security liability. The canonical `Serialization.mapper`
-is *not* wired into Redisson; any claim that it is the L2-cache codec is not borne out by the
-configuration. This gap is to be filled in a dedicated `docs/roles/task-author.md` +
-`docs/roles/task-implementor.md` session that selects and configures an explicit Redisson codec; it
-is not resolved here, and no design should assume the cache serialisation format matches the wire
-format until it is.
 
 **CLAUDE.md is ahead of the code on validation helpers.** CLAUDE.md's Serialization section states
 that monetary/rate values are constrained "using the `toTwoDecimalPlaces`/`toSevenDecimalPlaces` and

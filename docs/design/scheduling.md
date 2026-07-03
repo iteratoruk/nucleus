@@ -16,10 +16,12 @@ re-document audit event emission — see `docs/design/audit.md`.
 ## Vocabulary
 
 The task SPI is `iterator.nucleus.schedule.ScheduledTask<T>` — a single method
-`run(data: T): ScheduledTaskResult<T>`. A run reports outcome through `ScheduledTaskResult<T>`, which
-pairs a `ScheduledTaskStatus` (`SUCCESS` / `FAILURE`) with an optional `data: T?` — the payload to
-carry into the next fire. Failure that must reach Quartz is signalled by throwing
-`ScheduledTaskException`, whose `refire: Boolean` flag controls whether Quartz refires immediately.
+`run(data: T): ScheduledTaskResult<T>`. `ScheduledTaskResult<T>` carries only an optional `data: T?`
+— the payload to carry into the next fire; it holds no status, because a task does not declare its
+own outcome. A `run` that returns normally, with or without `data`, is success by definition; failure
+is signalled only by throwing. `ScheduledTaskException`, whose `refire: Boolean` flag controls whether
+Quartz refires immediately, is the deliberate-failure signal; any other thrown exception is a failure
+too but does not trigger an immediate refire.
 
 Registration is carried by `ScheduledTaskDetails<T>` — a value object holding the task's
 `beanClass`, its `cronExpression`, the `initialJobData: T`, and the `dataClass`. It is normally
@@ -29,6 +31,14 @@ constructed through the reified `scheduledTask(bean, cronExpression, initialJobD
 a `List<JobDetail>`, a `List<Trigger>`, and the `SchedulerFactoryBean`. `QuartzScheduledJob` is the
 single `org.quartz.Job` implementation that every trigger fires. `AutowiringSpringBeanJobFactory`
 is the `SpringBeanJobFactory` that makes Quartz-instantiated jobs Spring-injectable.
+
+The scheduler's own audit vocabulary lives in this package: `ScheduleAuditEventType` — an enum
+implementing the audit package's `NucleusAuditEventType` interface, with values
+`SCHEDULED_TASK_STARTED` and `SCHEDULED_TASK_FINISHED` — and the two events `ScheduledTaskStartedEvent`
+and `ScheduledTaskFinishedEvent`. The finished event carries the internal `ScheduledTaskStatus`
+(`SUCCESS` / `FAILURE`) that the dispatcher sets, the measured duration, and a null-safe error
+message. `schedule` depends on `audit` one-way; it does not surface any of these types back to the
+audit package.
 
 The clustered store schema is Flyway migration `V001__create_quartz_tables.sql` — the standard Quartz
 `QRTZ_*` JDBC job-store tables. Store behaviour is configured under the `spring.quartz` block in
@@ -151,27 +161,31 @@ tables, consistent with the project rule that Hibernate/Quartz never DDL and all
 migration (see `docs/design/persistence.md`). The `SchedulerFactoryBean` is given the application
 `DataSource` and the resolved `QuartzProperties`.
 
-Failure and refire are controlled through `ScheduledTaskException`. A task throws it (with `refire`
-true or false) to signal failure; `QuartzScheduledJob` catches it, emits a `FAILURE`
-`ScheduledTaskFinishedEvent` carrying the exception, and rethrows `JobExecutionException(msg, e,
-e.refire)` so Quartz refires — or does not — per the flag. Every run is bracketed by audit: a
-`ScheduledTaskStartedEvent` before dispatch and a `ScheduledTaskFinishedEvent` (with status and
-measured duration) after, emitted through `AuditService` (see `docs/design/audit.md`).
+Outcome and refire are settled by whether `run` returns or throws. `QuartzScheduledJob.execute`
+brackets every dispatch with audit — a `ScheduledTaskStartedEvent` before it runs, and *always* a
+`ScheduledTaskFinishedEvent` after, emitted through `AuditService` (see `docs/design/audit.md`). A
+`run` that returns normally is recorded `SUCCESS`. Both failure paths are caught: a specific
+`catch (ScheduledTaskException)` records `FAILURE` and rethrows `JobExecutionException(msg, e,
+e.refire)`, so Quartz refires — or not — per the flag; a following `catch (Exception)` records
+`FAILURE` for any other throw and rethrows `JobExecutionException(msg, e, false)`, so Quartz does not
+refire immediately. Either way a finished event is emitted with the measured duration and the
+exception's (null-safe) message, so a run can no longer complete started-but-never-finished in the
+audit trail.
 
 **Reference implementation:** `application.yml` `spring.quartz` block;
 `db/migration/V001__create_quartz_tables.sql`; `schedule/Schedule.kt` — `QuartzScheduledJob.execute`
 try/catch and `ScheduledTaskException`.
 
-**Rules:** Control refire by throwing `ScheduledTaskException` with the intended `refire` value from
-inside `run` — do not throw `JobExecutionException` yourself and do not swallow the failure and return
-`FAILURE` if you want Quartz to refire (returning a result reports `SUCCESS`/`FAILURE` for audit but
-does not trigger a refire). Keep `initialize-schema: never`; the Quartz schema is a Flyway migration,
-never Quartz-managed. New Quartz tables or changes to them are new Flyway migrations.
+**Rules:** Signal failure by throwing from `run`; to control an immediate refire, throw
+`ScheduledTaskException` with the intended `refire` value rather than throwing `JobExecutionException`
+yourself. A `run` that returns is success — do not model failure as a returned value; the result no
+longer carries a status to hold one. Keep `initialize-schema: never`; the Quartz schema is a Flyway
+migration, never Quartz-managed. New Quartz tables or changes to them are new Flyway migrations.
 
 **Pitfalls:** Setting `initialize-schema` to anything but `never` lets Quartz attempt DDL and collide
-with Flyway. Returning `ScheduledTaskResult(FAILURE)` while expecting Quartz to retry is a silent
-no-op on refire — the fire completes normally as far as Quartz is concerned; only a thrown
-`ScheduledTaskException` reaches the scheduler.
+with Flyway. Expecting a refire from an ordinary thrown exception is wrong — only a
+`ScheduledTaskException` with `refire = true` refires immediately; every other exception fails the
+fire without an immediate retry, leaving Quartz to apply the trigger's normal next-fire schedule.
 
 ## Extension Points
 
@@ -180,8 +194,9 @@ To add a scheduled process, implement `ScheduledTask<YourData>` as a bean and ex
 the wiring changes: `ScheduledTaskConfiguration` already injects `List<ScheduledTaskDetails<*>>` and
 builds the `JobDetail`/`Trigger` pair, `QuartzScheduledJob` already dispatches by class name, and the
 autowiring factory already Spring-injects the dispatcher. The store, clustering, and audit lifecycle
-are fixed infrastructure the new task inherits. New failure semantics extend `ScheduledTaskException`'s
-use (choose the `refire` flag); new outcome kinds would extend `ScheduledTaskStatus`.
+are fixed infrastructure the new task inherits. Failure semantics are throw-based: return to succeed,
+throw `ScheduledTaskException` (choosing the `refire` flag) to fail with refire control, throw
+anything else to fail without an immediate refire.
 
 ## Relationships
 
@@ -191,9 +206,8 @@ persistence (`docs/design/persistence.md`) for the Flyway-owns-schema rule that 
 serves a scheduling domain facet (which financial processes are scheduled and their timing semantics)
 that has no architecture document yet. The `CLAUDE.md` scheduling paragraph already carries the
 headline rule (implement `ScheduledTask<T>`, register `ScheduledTaskDetails`, throw
-`ScheduledTaskException` to control refire); this document is its authoritative expansion. A candidate
-`CLAUDE.md` edit is to note explicitly that returning `FAILURE` does not cause a refire — only a
-thrown `ScheduledTaskException` does — since that is the non-obvious failure-mode trap.
+`ScheduledTaskException` to control refire); this document is its authoritative expansion of the
+return-is-success / throw-is-failure model.
 
 ## ADR References and Candidates
 
@@ -214,37 +228,16 @@ The scheduling *domain* facet — which financial processes are scheduled, and t
 deliberately confined to the infrastructural pattern; the domain reference is forthcoming and should
 own those decisions. Do not infer timing semantics from this document.
 
-**Finding (worth surfacing, not a fix):** `QuartzScheduledJob.execute` catches only
-`ScheduledTaskException`. A task's `run` that throws any *other* exception — an unchecked NPE, an
-`IllegalArgumentException`, an unwrapped downstream failure — bypasses the catch entirely: no
-`ScheduledTaskFinishedEvent` is emitted (so the run appears started-but-never-finished in the audit
-trail), and the raw exception propagates to Quartz, which treats it as a hard `JobExecutionException`
-with default (no-refire) semantics. Tasks must therefore wrap their own failures in
-`ScheduledTaskException` to get a finished-audit event and refire control; whether the dispatcher
-should instead catch `Throwable` and always emit a finished event is a question for a TDD or task
-session, not resolved here.
-
-**Finding (design defect, behaviour change — architecture/story session):** the success/failure model
-is ambiguous. A run can end three tacitly-different ways: return normally with
-`ScheduledTaskStatus.SUCCESS`, return normally with `ScheduledTaskStatus.FAILURE`, or throw
-`ScheduledTaskException`. But only a throw reaches Quartz — it alone controls refire and drives the
-failure path — while a returned `FAILURE` is recorded in the finished-audit event yet is otherwise
-inert. This is ternary logic masquerading as a status field, and the infrastructure honours the status
-inconsistently: sometimes it matters (audit) and sometimes it does not (refire). The intended model,
-to be established in an architecture/story session, is that **a task which completes normally without
-throwing is successful by definition**; failure is signalled only by a thrown exception, which carries
-refire control. Under that model `ScheduledTaskStatus` on `ScheduledTaskResult` is redundant and
-probably wrong, and `ScheduledTaskResult` should carry only the carry-forward `data`. This is a
-behaviour change, not a behaviour-preserving task; the pattern above documents current behaviour, and
-this finding records that the behaviour itself needs correcting. It shares a root cause with the
-catch-only-`ScheduledTaskException` finding above: both come from the same unclear failure model, and
-both should be resolved together.
-
-**Finding (package cycle):** `schedule` and `audit` form a bidirectional package dependency. `schedule`
-depends on `audit` to raise its lifecycle events, while `audit` depends back on `schedule` for
-`ScheduledTaskStatus` (used by `ScheduledTaskFinishedEvent`). The resolution is owned by the audit
-concern — see the finding in `docs/design/audit.md`, which lays out the two options — but scheduling is
-one half of the cycle, and any fix (e.g. audit ceasing to reference `ScheduledTaskStatus`) will touch
-how the finished event is shaped. Note the connection to the previous finding: if `ScheduledTaskStatus`
-is removed from the result model, the audit event's dependency on it disappears with it, and the cycle
-resolves as a side effect.
+Three earlier findings are now resolved; they are recorded here only as history. The **ambiguous
+success/failure model** is gone: `ScheduledTaskResult` carries only the carry-forward `data`, a task
+no longer declares a status, and the model is unambiguous — a `run` that returns is success and a
+throw is failure. The **dispatcher catching only `ScheduledTaskException`** is fixed:
+`QuartzScheduledJob.execute` now has a specific `catch (ScheduledTaskException)` followed by a general
+`catch (Exception)`, so every failure path records `FAILURE`, always emits a `ScheduledTaskFinishedEvent`,
+and rethrows as `JobExecutionException`; a run can no longer appear started-but-never-finished. The
+**`schedule` ↔ `audit` package cycle** is broken: the scheduler's audit types (`ScheduleAuditEventType`,
+`ScheduledTaskStartedEvent`, `ScheduledTaskFinishedEvent`) live in the `schedule` package and depend
+on the audit package's `NucleusAuditEventType` interface one-way — the interface-export approach owned
+by the audit concern (see `docs/design/audit.md`). The `ScheduledTaskFinishedEvent` error extraction
+is null-safe. Audit's half of the former cycle is enforced by ArchUnit:
+`PackageDependencyRulesTest."audit must not depend on peer feature packages"`.

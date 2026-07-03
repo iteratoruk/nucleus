@@ -26,7 +26,17 @@ auditing columns come from there (see `docs/design/persistence.md`).
 finder, `findByOperationIdAndIdempotencyKey`, returning the row or `null`.
 
 **`IdempotencyService`** — the service exposing `findExistingResponse` and `record`. This is the
-only surface a write endpoint should touch.
+surface an endpoint touches directly when it brackets the work by hand; the declarative path below
+sits on top of the same two methods.
+
+**`@Idempotent`** — the function-target annotation a controller method wears to opt into declarative
+idempotency. It carries one optional `operation` string; left blank, the `operationId` is derived
+from the method (`SimpleClassName.methodName`).
+
+**`IdempotencyAspect`** — the `@Aspect` `@Component` that brackets every `@Idempotent` method with
+store-and-replay via an `@Around("@annotation(idempotent)")` advice. It reads the header, derives the
+`operationId`, resolves the response type from the method signature, short-circuits on a hit, and on a
+miss performs the work and records it through `recordOrReplay`.
 
 **`NucleusHeaders.IDEMPOTENCY_KEY`** (`"Idempotency-Key"`) — the request header carrying the key.
 
@@ -81,6 +91,54 @@ hash — replay reconstructs the exact response object the first call produced.
   assumes a concrete DTO. If a parameterised response is needed, that is a change to the service, not
   a call-site workaround — surface it.
 
+### Pattern: Declarative `@Idempotent` interceptor
+
+**Problem:** Bracketing every write controller by hand — reading the header, choosing an
+`operationId`, calling `findExistingResponse` then `record` around the body — repeats the same
+scaffolding at every call site and leaves the sequencing (check before work, record after success) to
+each author to get right. It also leaves unsettled where in the request lifecycle the check sits. A
+controller should be able to declare "this operation is idempotent" and have the mechanism applied for
+it, without importing the service into its body.
+
+**Approach:** A controller function wears `@Idempotent` (optionally naming its `operation`), and
+`IdempotencyAspect` — a Spring AOP `@Around("@annotation(idempotent)")` advice — wraps the invocation.
+The aspect resolves the current request via `RequestContextHolder`, reads the `Idempotency-Key` header,
+and only engages when both a request and a key are present; absent either (a missing header, or a call
+outside a servlet request), it calls `joinPoint.proceed()` unchanged, so the annotation is inert
+without a key. When it engages, it derives the `operationId` as `idempotent.operation.ifBlank {
+"${signature.declaringType.simpleName}.${signature.name}" }` and takes the response type from the
+method signature (`signature.returnType.kotlin`). It then calls `findExistingResponse(operationId, key,
+responseType)`: on a hit it returns the stored response and never proceeds; on a miss it calls
+`joinPoint.proceed()` to run the controller body, and — for a non-null result — records it through
+`recordOrReplay(operationId, key, request.requestURI, response, responseType)`. A `null` result is
+returned without being recorded.
+
+**Reference implementation:** `iterator.nucleus.idempotency.Idempotent` (the annotation) and
+`iterator.nucleus.idempotency.IdempotencyAspect` — `applyIdempotency` and `recordOrReplay` — in
+`src/main/kotlin/iterator/nucleus/idempotency/Idempotency.kt`. The hit/miss/passthrough behaviour is
+covered end-to-end by `IdempotencyApiTest` (resubmit replays and runs once; a different key runs again;
+no key runs each time), and the concurrent-violation replay by `IdempotencyAspectTest`.
+
+**Rules:**
+- The annotated method's declared return type *is* the response type resolved for replay; declare a
+  concrete DTO return type, not `Any`/`Object`/`ResponseEntity<*>`, or the round-trip through
+  `findExistingResponse` has nothing precise to deserialize into (the parameterised-type limitation
+  below applies here unchanged).
+- Keep `operation` stable once set, for the same reason `operationId` must be stable — it is half the
+  identity of every record. Leaving it blank pins the id to the class-and-method name, so renaming or
+  moving the method silently changes the derived `operationId` and orphans prior records; set an
+  explicit `operation` where that matters.
+- Do not also bracket an `@Idempotent` method by hand; the aspect already performs the
+  check/record, and a manual pair inside the body would double-record.
+
+**Pitfalls:**
+- Assuming `@Idempotent` alone enforces the key. It does not — without an `Idempotency-Key` header the
+  aspect passes straight through and the work runs every time (see Findings). Requiring the key is a
+  separate, deferred validation concern.
+- Expecting the aspect to fire outside an HTTP request (an internal or async call to the same method).
+  It resolves the request from `RequestContextHolder`; with no servlet request attributes it proceeds
+  unbracketed.
+
 ### Pattern: Global, permanent composite key scope
 
 **Problem:** The key namespace has to be defined: does a key expire, is it partitioned per client,
@@ -112,9 +170,12 @@ varchar(255)`, `uri varchar(2048)`, and `response_body text`, all `not null`, al
 - Treating the read-then-write in `findExistingResponse`/`record` as the sole guard against duplicates
   is a race: two concurrent first-time requests with the same key can both miss the read and both
   attempt `record`. The unique constraint is the real guarantee — the second `save` fails on it (a
-  `DataIntegrityViolationException`) rather than writing a duplicate. An endpoint relying on
-  idempotency under concurrency must expect and handle that constraint violation; it is not defended
-  in the service as written (see Findings).
+  `DataIntegrityViolationException`) rather than writing a duplicate. The declarative path defends this
+  in `IdempotencyAspect.recordOrReplay`, which catches the violation and replays the now-stored
+  response so both callers converge on one; the raw `IdempotencyService` does not, so an endpoint that
+  brackets by hand must wrap `record` the same way. This converges the *response* and guarantees a
+  single *record*, but not a single *execution* — under a genuine concurrent first-write both bodies
+  can run before either records (see Findings).
 - Assuming a key becomes free to reuse after some interval. It does not — the scope is permanent by
   design; there is no expiry.
 
@@ -146,24 +207,21 @@ throwing `JacksonException` — is caught and rethrown as
 
 ## Extension Points
 
-A new write operation opts in without touching this concern's code: pick a stable `operationId`
-string for the operation, read the `Idempotency-Key` header via `NucleusHeaders.IDEMPOTENCY_KEY`, and
-bracket the work — `findExistingResponse(operationId, key, ResponseType::class)` first, returning the
-hit if present; otherwise perform the work and `record(operationId, key, uri, response)`. No enum
-value, entity, or migration change is required for a new operation; the mechanism is fully generic
-over `operationId` and response type. The concern only grows if the response type must become
-parameterised (a service change) or if concurrent first-writes must be handled gracefully rather than
-surfacing the unique-constraint violation (also a service change).
+A new write operation opts in without touching this concern's code. The ordinary path is declarative:
+annotate the controller function with `@Idempotent` (naming `operation` if the derived
+class-and-method id is not wanted), declare a concrete response DTO as its return type, and
+`IdempotencyAspect` brackets the rest. No enum value, entity, or migration change is required; the
+mechanism is fully generic over `operationId` and response type. Where a handler cannot carry the
+annotation — the check must sit somewhere other than the method boundary, or the response type is
+parameterised — an endpoint can still bracket the work by hand against `IdempotencyService`:
+`findExistingResponse(operationId, key, ResponseType::class)` first, returning the hit if present;
+otherwise perform the work and `record(operationId, key, uri, response)` (wrapping `record` in the same
+`recordOrReplay` catch the aspect uses if it needs the concurrent-first-write convergence).
 
-A stronger, still-unbuilt extension is to make idempotency *declarative*. An `@Idempotent` annotation
-on a REST controller function, plus an interceptor (a Spring `HandlerInterceptor` or an AOP aspect
-around the annotated method), would derive the `operationId` from the handler, read the
-`Idempotency-Key` header, and bracket the invocation with `findExistingResponse`/`record`
-automatically — removing the explicit calls from every controller body and settling where the check
-sits in the request lifecycle (which this document currently leaves to the adopting endpoint). This is
-a candidate direction, not a current pattern: it introduces new behaviour and must be built under a
-red test in a TDD session before it is documented here. It is called out because the store-and-replay
-service is deliberately shaped to sit behind such an interceptor without change.
+The concern only grows if the response type must become parameterised (a service change, see Findings),
+if the `Idempotency-Key` header must be *required* rather than optional (the deferred validation path,
+see Findings), or if single-execution under a genuine concurrent first-write must be guaranteed (a
+claim-first change, see Findings).
 
 ## Relationships
 
@@ -173,9 +231,9 @@ Depends on `docs/design/persistence.md` (`IdempotentOperation` extends `Abstract
 for `writeValueAsString`/`readValue`, and the `BigDecimal`-as-string rule that governs how monetary
 responses round-trip), and `docs/design/error-handling.md`
 (`NucleusInternalErrorException`, the `NucleusErrorCode` enum, and the `ErrorHandler` mapping to a
-500). No documented concern currently depends on idempotency, because no write endpoint yet adopts it
-(see Findings). CLAUDE.md already carries the one-line rule for this concern; the authoritative
-statement is here, and no CLAUDE.md edit is proposed.
+500). No documented concern currently depends on idempotency, because no production write endpoint yet
+adopts it (see Findings). CLAUDE.md's Idempotency paragraph has since been updated to lead with the
+`@Idempotent` annotation and its aspect; the authoritative statement is here.
 
 ## ADR References and Candidates
 
@@ -192,26 +250,36 @@ Two decisions embodied here foreclose reasonable alternatives and are candidates
 
 ## Open Questions and Findings
 
-- **No write endpoint wires the mechanism.** `IdempotencyService` has no caller in the skeleton
-  (`grep` for `IdempotencyService`, `findExistingResponse`, and `.record(` finds only the definition
-  site). This is consistent with the skeleton state — the machinery predates any domain endpoint — and
-  is the anticipated extension point above rather than a defect. It does mean the check-then-record
-  *sequencing* (check before work, record after success) is a convention this document asserts, not one
-  yet witnessed at a call site; the first adopting story is where it becomes real.
-- **The read-then-write is not concurrency-safe on its own.** `findExistingResponse` then `record` is a
-  non-atomic check-then-act; correctness under concurrent first-writes rests entirely on the
-  `uq_idempotent_operation_key` unique constraint, and the resulting `DataIntegrityViolationException`
-  is not caught or translated in `IdempotencyService`. Whether that violation should surface raw, be
-  mapped to a replay of the now-existing record, or become a defined `NucleusErrorCode` is an open
-  question for the first endpoint that needs it — a TDD/architecture decision, not resolved here.
+- **No production endpoint adopts the mechanism yet.** `IdempotencyAspect` is now the standing caller
+  of `IdempotencyService`, and `IdempotencyApiTest` exercises the whole path through a test-profile
+  `IdempotencyProbeController`, so the check-then-record sequencing is witnessed under test rather than
+  only asserted. What is still absent is a *domain* write endpoint wearing `@Idempotent` in
+  `src/main`; the first such story is where the pattern meets a real operation.
+- **Single execution is not guaranteed under a genuine concurrent first-write.**
+  `IdempotencyAspect.recordOrReplay` catches the `DataIntegrityViolationException` and replays the
+  now-stored response, so the concurrency contract now delivers *response-consistency* (both callers
+  converge on one response) and a *single record* (the unique constraint admits one row). It does not
+  deliver *single execution*: the check-then-act is still non-atomic, so two concurrent first requests
+  can both miss `findExistingResponse` and both run the controller body before either records — only
+  the second `record` loses, and only its response is discarded. Closing this needs a *claim-first*
+  design: insert a placeholder row (or take a lock) on the `(operationId, idempotencyKey)` before the
+  work, so the losing request blocks or replays instead of executing. That is a future enhancement, an
+  architecture/TDD decision, not resolved here.
+- **Idempotency passes through when no key is present.** Both the aspect and any hand-bracketed
+  endpoint treat a missing `Idempotency-Key` header as "not idempotent" and let the work run every time
+  (`IdempotencyApiTest`'s no-key case asserts the body runs twice). Making the key *required* — a 4xx
+  when a write endpoint is called without one — belongs to the deferred validation path
+  (`NucleusValidationException`/`NucleusViolation`), not to this concern as written; until that path
+  exists, `@Idempotent` is opt-in per request, not enforced.
 - **`findExistingResponse` cannot deserialize a parameterised response type.** It uses
-  `readValue(String, Class<T>)` via `KClass.java`, which erases generics. A response DTO that is itself
-  generic (e.g. a `List<T>` or a parameterised wrapper) will not round-trip. If such a response is
-  required, the service needs a `TypeReference`-based overload — flagged for the story that hits it.
-- **The idempotency package must stay self-contained.** It references only the top-level parent
+  `readValue(String, Class<T>)` via `KClass.java`, which erases generics; the aspect inherits this
+  because it resolves the response type from the method's declared return type. A response DTO that is
+  itself generic (e.g. a `List<T>` or a parameterised wrapper) will not round-trip. If such a response
+  is required, the service needs a `TypeReference`-based overload — flagged for the story that hits it.
+- **The idempotency package is self-contained, now enforced.** It references only the top-level parent
   package (`AbstractJpaEntity`, `AbstractJpaRepository`, `Serialization`, `NucleusHeaders`, and the
-  error types `NucleusInternalErrorException`/`NucleusErrorCode`) and no peer sub-package — verified
-  against its imports. This holds today but is unenforced; an ArchUnit test asserting that the
-  `idempotency` package depends only on `iterator.nucleus` (parent) and external libraries should be
-  added in a task session. Keeping it self-contained is what lets the declarative `@Idempotent`
-  extension above be applied across controllers without dragging domain packages into idempotency.
+  error types `NucleusInternalErrorException`/`NucleusErrorCode`) and no peer sub-package. This is no
+  longer only convention: `PackageDependencyRulesTest`'s `idempotency must not depend on peer feature
+  packages` rule asserts that `iterator.nucleus.idempotency..` depends on no `audit`, `kafka`, or
+  `schedule` package. Keeping it self-contained is what lets the declarative `@Idempotent` support be
+  applied across features without dragging domain packages into idempotency.

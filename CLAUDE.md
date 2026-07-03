@@ -82,7 +82,9 @@ camel-to-underscore physical naming, with globally-quoted identifiers.
 **Serialization.** Use the single `Serialization.mapper` (also the Spring `ObjectMapper` bean).
 `BigDecimal` serialises as a JSON *string*, not a number. Monetary/rate values are held to
 2 or 7 decimal places — normalise with the `toTwoDecimalPlaces`/`toSevenDecimalPlaces` helpers in
-`Extensions.kt`.
+`Extensions.kt`. The Redis L2 cache serialises through the same config via `JsonRedissonRegionFactory`
+(a Redisson JSON codec built from a *copy* of the mapper); a custom serializer must implement
+`serializeWithType` to survive the cache's polymorphic typing.
 
 **Errors.** Throw `NucleusInternalErrorException` (500, carries a `NucleusErrorCode`); `ErrorHandler`
 (`@ControllerAdvice`) maps it to a `NucleusError` body. Add new error kinds to the `NucleusErrorCode`
@@ -90,21 +92,28 @@ enum. Client-error (4xx) and request-validation handling do not yet exist and ar
 open — see `docs/design/error-handling.md`. HTTP constants: `NucleusHeaders`, `Uris.API_V1`
 (`/api/v1`).
 
-**Audit vs Kafka — keep them separate.** Audit events extend `AbstractAuditEvent` and are
-published via `AuditService.publishAuditEvent` (async → `LoggingAuditRepository`). Kafka payloads
-are `OutboundEvent` subclasses and **must not** extend `AbstractAuditEvent` — they are plain
-Jackson POJOs. `KafkaOutboundEventPublisher.publish` fans out: it emits the audit event *and*
-schedules the Kafka send for `AFTER_COMMIT` of the surrounding transaction. Add new event kinds to
-the `NucleusAuditEventType` enum. Topics use the `nucleus.private.` / `nucleus.public.` prefixes;
-annotate consumers with `@TransactionalRetryingKafkaListener`.
+**Audit and Kafka are separate channels — choose one.** A significant happening is *either* an audit
+event *or* a Kafka message, not both automatically; where both are genuinely wanted, raise each
+explicitly at the call site. Audit events extend `AbstractAuditEvent` (an Actuator
+`AuditApplicationEvent`), published via `AuditService.publishAuditEvent` (async → `LoggingAuditRepository`).
+`NucleusAuditEventType` is an *interface*: each feature package defines its own enum implementing it
+and owns its audit event classes — the audit package depends on no feature package (enforced by an
+ArchUnit rule). Kafka payloads are `OutboundEvent` subclasses carrying only `topic`/`key`; they
+**must not** extend `AbstractAuditEvent` (plain Jackson POJOs). `KafkaOutboundEventPublisher.publish`
+emits an `OutboundEventReady` application event whose `AFTER_COMMIT` listener performs the send — so
+nothing is published on rollback, and publishing does not audit. Topics use the `nucleus.private.` /
+`nucleus.public.` prefixes; annotate consumers with `@TransactionalRetryingKafkaListener`.
 
-**Idempotency.** Write endpoints take an `Idempotency-Key` header; `IdempotencyService` records
-`(operationId, idempotencyKey) → responseBody` and replays the stored response on resubmission.
-This is a global, permanent key scope.
+**Idempotency.** Annotate a write controller method `@Idempotent`; `IdempotencyAspect` brackets it
+automatically when an `Idempotency-Key` header is present, recording `(operationId, idempotencyKey) →
+responseBody` (via `IdempotencyService`) and replaying the stored response on resubmission. The
+`operationId` defaults to `SimpleClassName.methodName`. Global, permanent key scope; a concurrent-write
+unique-constraint violation replays the stored response. With no key the call passes through unchanged.
 
 **Scheduling.** Implement `ScheduledTask<T>` and register a `ScheduledTaskDetails` bean (helper:
 `scheduledTask(...)`). `QuartzScheduledJob` runs them on a clustered, JDBC-backed Quartz store and
-emits started/finished audit events; throw `ScheduledTaskException` to control refire.
+brackets each run with started/finished audit events. Returning normally is success; throwing is
+failure (tasks do not declare a status); throw `ScheduledTaskException` to control immediate refire.
 
 **Domain modelling rule.** Values resolved from the parameter value hierarchy (accounting codes,
 feature configuration, etc.) do **not** become fields on an aggregate — the aggregate stores only
