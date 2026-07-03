@@ -48,6 +48,12 @@ inline fun <reified T : Any> scheduledTask(
   )
 
 interface ScheduledTask<T> {
+  /**
+   * Executes the task. Returning normally — with or without carry-forward
+   * [ScheduledTaskResult.data] — is success by definition. To fail, throw: any exception is a
+   * failure. Throw [ScheduledTaskException] to control whether Quartz refires immediately; any
+   * other exception fails without an immediate refire.
+   */
   fun run(data: T): ScheduledTaskResult<T>
 }
 
@@ -58,7 +64,6 @@ class ScheduledTaskException(
 ) : IllegalStateException(message, cause)
 
 data class ScheduledTaskResult<T>(
-  val status: ScheduledTaskStatus,
   val data: T? = null,
 )
 
@@ -151,24 +156,34 @@ class QuartzScheduledJob(
       val task = ctx.getBean(taskClass) as ScheduledTask<Any>
       val result = task.run(taskData)
       data.put("payload", om.writeValueAsString(result.data))
-      audit.publishAuditEvent(
-        ScheduledTaskFinishedEvent(
-          taskName = name,
-          status = result.status,
-          executionDuration = measureDuration(start),
-        ),
-      )
+      // Returning normally is success by definition.
+      publishFinished(name, ScheduledTaskStatus.SUCCESS, start)
     } catch (e: ScheduledTaskException) {
-      audit.publishAuditEvent(
-        ScheduledTaskFinishedEvent(
-          taskName = name,
-          status = ScheduledTaskStatus.FAILURE,
-          executionDuration = measureDuration(start),
-          error = e,
-        ),
-      )
+      // A deliberate failure that controls whether Quartz refires immediately.
+      publishFinished(name, ScheduledTaskStatus.FAILURE, start, e)
       throw JobExecutionException("Job $name failed", e, e.refire)
+    } catch (e: Exception) {
+      // Any other throw is a failure too, and always produces a finished event; Quartz does not
+      // refire immediately unless a ScheduledTaskException asked it to.
+      publishFinished(name, ScheduledTaskStatus.FAILURE, start, e)
+      throw JobExecutionException("Job $name failed", e, false)
     }
+  }
+
+  private fun publishFinished(
+    name: String,
+    status: ScheduledTaskStatus,
+    start: Long,
+    error: Exception? = null,
+  ) {
+    audit.publishAuditEvent(
+      ScheduledTaskFinishedEvent(
+        taskName = name,
+        status = status,
+        executionDuration = measureDuration(start),
+        error = error,
+      ),
+    )
   }
 
   private fun measureDuration(start: Long): Long = System.currentTimeMillis() - start

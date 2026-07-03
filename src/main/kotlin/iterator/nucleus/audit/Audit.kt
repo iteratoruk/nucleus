@@ -55,7 +55,10 @@ data class ScheduledTaskFinishedEvent(
 ) : AbstractAuditEvent(
     type = NucleusAuditEventType.SCHEDULED_TASK_FINISHED,
     data =
-      (error?.let { mapOf("error" to (it.message as Any)) } ?: emptyMap()) +
+      (
+        error?.let { mapOf<String, Any>("error" to (it.message ?: it.toString())) }
+          ?: emptyMap()
+      ) +
         mapOf(
           "taskName" to taskName,
           "status" to status.name,

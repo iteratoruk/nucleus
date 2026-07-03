@@ -64,7 +64,6 @@ class QuartzScheduledJobTest(
     given { jec.jobDetail }.willReturn(detail)
     val result =
       ScheduledTaskResult(
-        status = ScheduledTaskStatus.SUCCESS,
         data = data.copy(now = now.plusMillis(1000), str = randomAlphanumeric(16)),
       )
     val task = MockScheduledTask(result)
@@ -84,7 +83,8 @@ class QuartzScheduledJobTest(
       .isEqualTo(MockScheduledTask::class.java.name)
     assertThat((captor.secondValue as ScheduledTaskFinishedEvent).taskName)
       .isEqualTo(MockScheduledTask::class.java.name)
-    assertThat((captor.secondValue as ScheduledTaskFinishedEvent).status).isEqualTo(result.status)
+    assertThat((captor.secondValue as ScheduledTaskFinishedEvent).status)
+      .isEqualTo(ScheduledTaskStatus.SUCCESS)
     assertThat((captor.secondValue as ScheduledTaskFinishedEvent).error).isNull()
     assertThat((captor.secondValue as ScheduledTaskFinishedEvent).executionDuration)
       .isCloseTo(duration, Offset.offset(10))
@@ -111,7 +111,6 @@ class QuartzScheduledJobTest(
     given { jec.jobDetail }.willReturn(detail)
     val result =
       ScheduledTaskResult(
-        status = ScheduledTaskStatus.SUCCESS,
         data = data.copy(now = now.plusMillis(1000), str = randomAlphanumeric(16)),
       )
     val exception =
@@ -142,11 +141,55 @@ class QuartzScheduledJobTest(
       .isEqualTo(ScheduledTaskStatus.FAILURE)
     assertThat((captor.secondValue as ScheduledTaskFinishedEvent).error).isEqualTo(exception)
   }
+
+  @Test
+  fun `emit failure and rethrow without immediate refire when task throws any other exception`() {
+    // given
+    val now = Instant.now()
+    val str = randomAlphanumeric(16)
+    val data = MockScheduledTaskData(str, now)
+    val map =
+      JobDataMap().apply {
+        put("payloadClass", MockScheduledTaskData::class.java.name)
+        put("payload", om.writeValueAsString(data))
+      }
+    given { jec.mergedJobDataMap }.willReturn(map)
+    val detail =
+      JobBuilder
+        .newJob(QuartzScheduledJob::class.java)
+        .withIdentity(MockScheduledTask::class.java.name, "scheduledTasks")
+        .usingJobData(map)
+        .build()
+    given { jec.jobDetail }.willReturn(detail)
+    // an arbitrary exception with no message — also exercises the null-message audit path
+    val exception = IllegalStateException()
+    val task = MockScheduledTask(ScheduledTaskResult(data), exception)
+    given { ctx.getBean(eq(MockScheduledTask::class.java)) }.willReturn(task)
+
+    // when
+    val actual = assertThrows<JobExecutionException> { job.execute(jec) }
+
+    // then
+    assertThat(task.ran).isTrue
+    // not a ScheduledTaskException, so no immediate refire
+    assertThat(actual.refireImmediately()).isFalse
+    assertThat(actual.cause).isEqualTo(exception)
+    // the job data map should not be updated
+    assertThat(map.get("payload")).isEqualTo(om.writeValueAsString(data))
+    // a finished event is still emitted (previously it was not for non-ScheduledTaskException)
+    val captor = argumentCaptor<AbstractAuditEvent>()
+    verify(audit, times(2)).publishAuditEvent(captor.capture())
+    assertThat((captor.firstValue as ScheduledTaskStartedEvent).taskName)
+      .isEqualTo(MockScheduledTask::class.java.name)
+    assertThat((captor.secondValue as ScheduledTaskFinishedEvent).status)
+      .isEqualTo(ScheduledTaskStatus.FAILURE)
+    assertThat((captor.secondValue as ScheduledTaskFinishedEvent).error).isEqualTo(exception)
+  }
 }
 
 class MockScheduledTask(
   val result: ScheduledTaskResult<MockScheduledTaskData>,
-  val exception: ScheduledTaskException? = null,
+  val exception: Exception? = null,
 ) : ScheduledTask<MockScheduledTaskData> {
   var ran = false
 
