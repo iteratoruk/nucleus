@@ -1,9 +1,6 @@
 package iterator.nucleus.kafka
 
 import iterator.nucleus.Serialization
-import iterator.nucleus.audit.AuditService
-import iterator.nucleus.audit.GenericAuditEvent
-import iterator.nucleus.audit.NucleusAuditEventType
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -35,7 +32,6 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
-import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.full.declaredMemberProperties
@@ -199,10 +195,6 @@ object KafkaConstants {
 abstract class OutboundEvent {
   abstract val topic: String
   abstract val key: String
-  abstract val auditType: NucleusAuditEventType
-  open val auditPrincipal: String? = null
-  open val auditTimestamp: Instant = Instant.now()
-  open val auditData: Map<String, Any> = emptyMap()
 }
 
 interface OutboundEventPublisher {
@@ -217,17 +209,8 @@ data class OutboundEventReady(
 class KafkaOutboundEventPublisher(
   val applicationEventPublisher: ApplicationEventPublisher,
   val kafkaTemplate: KafkaTemplate<String, Any>,
-  val auditService: AuditService,
 ) : OutboundEventPublisher {
   override fun publish(event: OutboundEvent) {
-    auditService.publishAuditEvent(
-      GenericAuditEvent(
-        type = event.auditType,
-        principal = event.auditPrincipal,
-        data = event.auditData,
-        timestamp = event.auditTimestamp,
-      ),
-    )
     applicationEventPublisher.publishEvent(OutboundEventReady(event))
   }
 
